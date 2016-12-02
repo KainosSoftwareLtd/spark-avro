@@ -26,7 +26,7 @@ import scala.collection.immutable.Map
 
 import org.apache.avro.generic.GenericData.Record
 import org.apache.avro.generic.GenericRecord
-import org.apache.avro.{Schema, SchemaBuilder}
+import org.apache.avro.{Conversions, LogicalTypes, Schema, SchemaBuilder}
 import org.apache.avro.mapred.AvroKey
 import org.apache.avro.mapreduce.AvroKeyOutputFormat
 import org.apache.hadoop.io.NullWritable
@@ -90,7 +90,12 @@ private[avro] class AvroOutputWriter(
       }
       case ByteType | ShortType | IntegerType | LongType |
            FloatType | DoubleType | StringType | BooleanType => identity
-      case _: DecimalType => (item: Any) => if (item == null) null else item.toString
+      case _: DecimalType => (item: Any) =>
+        if (item == null) null
+        else {
+          val bigItem = item.asInstanceOf[java.math.BigDecimal]
+          ByteBuffer.wrap(bigItem.unscaledValue().toByteArray)
+        }
       case TimestampType => (item: Any) =>
         if (item == null) null else item.asInstanceOf[Timestamp].getTime
       case ArrayType(elementType, _) =>

@@ -17,11 +17,13 @@ package com.databricks.spark.avro
 
 import java.nio.ByteBuffer
 
+import org.apache.avro.LogicalTypes.LogicalTypeFactory
+
 import scala.collection.JavaConverters._
 
 import org.apache.avro.generic.GenericData.Fixed
 import org.apache.avro.generic.{GenericData, GenericRecord}
-import org.apache.avro.{Schema, SchemaBuilder}
+import org.apache.avro.{Conversions, LogicalTypes, Schema, SchemaBuilder}
 import org.apache.avro.SchemaBuilder._
 import org.apache.avro.Schema.Type._
 
@@ -46,7 +48,18 @@ object SchemaConverters {
       case INT => SchemaType(IntegerType, nullable = false)
       case STRING => SchemaType(StringType, nullable = false)
       case BOOLEAN => SchemaType(BooleanType, nullable = false)
-      case BYTES => SchemaType(BinaryType, nullable = false)
+      case BYTES => {
+        if (null != avroSchema.getProp("logicalType") &&
+          avroSchema.getProp("logicalType").equals("decimal")) {
+          val precision = avroSchema.getProp("precision")
+          val scale = Option(avroSchema.getProp("scale"))
+
+          SchemaType(DecimalType(precision.toInt, scale.getOrElse("0").toInt), nullable = false)
+        }
+        else {
+          SchemaType(BinaryType, nullable = false)
+        }
+      }
       case DOUBLE => SchemaType(DoubleType, nullable = false)
       case FLOAT => SchemaType(FloatType, nullable = false)
       case LONG => SchemaType(LongType, nullable = false)
@@ -159,16 +172,35 @@ object SchemaConverters {
             } else {
               item.asInstanceOf[Fixed].bytes().clone()
             }
+        case (_: DecimalType, BYTES) =>
+          (item: AnyRef) =>
+            if (item == null) {
+              null
+            } else {
+              val precision = avroSchema.getProp("precision")
+              val scale = avroSchema.getProp("scale")
+
+              if (null == scale) {
+                new Conversions.DecimalConversion().
+                  fromBytes(item.asInstanceOf[ByteBuffer], avroSchema,
+                    LogicalTypes.decimal(precision.toInt))
+              }
+              else {
+                new Conversions.DecimalConversion().
+                  fromBytes(item.asInstanceOf[ByteBuffer], avroSchema,
+                    LogicalTypes.decimal(precision.toInt, scale.toInt))
+              }
+            }
         case (BinaryType, BYTES) =>
           (item: AnyRef) =>
             if (item == null) {
               null
             } else {
-              val byteBuffer = item.asInstanceOf[ByteBuffer]
-              val bytes = new Array[Byte](byteBuffer.remaining)
-              byteBuffer.get(bytes)
-              bytes
-            }
+                val byteBuffer = item.asInstanceOf[ByteBuffer]
+                val bytes = new Array[Byte](byteBuffer.remaining)
+                byteBuffer.get(bytes)
+                bytes
+              }
 
         case (struct: StructType, RECORD) =>
           val length = struct.fields.length
@@ -323,7 +355,10 @@ object SchemaConverters {
       case LongType => schemaBuilder.longType()
       case FloatType => schemaBuilder.floatType()
       case DoubleType => schemaBuilder.doubleType()
-      case _: DecimalType => schemaBuilder.stringType()
+      case _: DecimalType =>
+        val decimalType = dataType.asInstanceOf[DecimalType]
+        schemaBuilder.bytesBuilder().prop("logicalType","decimal").
+          prop("precision",s"${decimalType.precision}").prop("scale",s"${decimalType.scale}").endBytes()
       case StringType => schemaBuilder.stringType()
       case BinaryType => schemaBuilder.bytesType()
       case BooleanType => schemaBuilder.booleanType()
@@ -366,7 +401,10 @@ object SchemaConverters {
       case LongType => newFieldBuilder.longType()
       case FloatType => newFieldBuilder.floatType()
       case DoubleType => newFieldBuilder.doubleType()
-      case _: DecimalType => newFieldBuilder.stringType()
+      case _: DecimalType =>
+        val decimalType = dataType.asInstanceOf[DecimalType]
+        newFieldBuilder.bytesBuilder().prop("logicalType","decimal").
+          prop("precision",s"${decimalType.precision}").prop("scale",s"${decimalType.scale}").endBytes()
       case StringType => newFieldBuilder.stringType()
       case BinaryType => newFieldBuilder.bytesType()
       case BooleanType => newFieldBuilder.booleanType()

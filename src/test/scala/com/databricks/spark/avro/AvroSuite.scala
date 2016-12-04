@@ -306,7 +306,7 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
         StructField("Name", StringType, false),
         StructField("Length", IntegerType, true),
         StructField("Time", TimestampType, false),
-        StructField("Decimal", DecimalType(10, 2), true),
+        StructField("Decimal", DecimalType(38,5), true),
         StructField("Binary", BinaryType, false)))
 
       val arrayOfByte = new Array[Byte](4)
@@ -315,8 +315,8 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
       }
       val cityRDD = sqlContext.sparkContext.parallelize(Seq(
         Row("San Francisco", 12, new Timestamp(666), null, arrayOfByte),
-        Row("Palo Alto", null, new Timestamp(777), null, arrayOfByte),
-        Row("Munich", 8, new Timestamp(42), Decimal(3.14), arrayOfByte)))
+        Row("Palo Alto", null, new Timestamp(777), Decimal(new java.math.BigDecimal("99999999999999999999999999999999.123456"),38,5), arrayOfByte),
+        Row("Munich", 8, new Timestamp(42), null, arrayOfByte)))
       val cityDataFrame = sqlContext.createDataFrame(cityRDD, testSchema)
 
       val avroDir = tempDir + "/avro"
@@ -329,7 +329,7 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
 
       // DecimalType should be converted to string
       val decimals = sqlContext.read.avro(avroDir).select("Decimal").collect()
-      assert(decimals.map(_(0)).contains("3.14"))
+      assert(decimals.map(_(0)).contains(new java.math.BigDecimal("99999999999999999999999999999999.12346")))
 
       // There should be a null entry
       val length = sqlContext.read.avro(avroDir).select("Length").collect()

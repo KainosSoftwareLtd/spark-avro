@@ -103,7 +103,12 @@ private[avro] class AvroOutputWriter(
       }
       case ByteType | ShortType | IntegerType | LongType |
            FloatType | DoubleType | StringType | BooleanType => identity
-      case _: DecimalType => (item: Any) => if (item == null) null else item.toString
+      case _: DecimalType => (item: Any) =>
+        if (item == null) null
+        else {
+          val bigItem = item.asInstanceOf[java.math.BigDecimal]
+          ByteBuffer.wrap(bigItem.unscaledValue().toByteArray)
+        }
       case TimestampType => (item: Any) =>
         if (item == null) null else item.asInstanceOf[Timestamp].getTime
       case ArrayType(elementType, _) =>

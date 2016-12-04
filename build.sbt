@@ -29,7 +29,7 @@ spIgnoreProvided := true
 sparkComponents := Seq("sql")
 
 libraryDependencies ++= Seq(
-  "org.apache.avro" % "avro" % "1.7.6" exclude("org.mortbay.jetty", "servlet-api"),
+  "org.apache.avro" % "avro" % "1.8.1" exclude("org.mortbay.jetty", "servlet-api"),
   "org.apache.avro" % "avro-mapred" % "1.7.7"  % "provided" classifier("hadoop2") exclude("org.mortbay.jetty", "servlet-api"),
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "commons-io" % "commons-io" % "2.4" % "test"

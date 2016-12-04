@@ -10,7 +10,8 @@
 	"enum": "SPADES",
 	"record": {"value_field": "Two things are infinite: the universe and human stupidity; and I'm not sure about universe."},
 	"array_of_boolean": [true, false, false],
-	"bytes": "\u0041\u0042\u0043"
+	"bytes": "\u0041\u0042\u0043",
+	"decimal": "123456789012345678901234567.12345"
 }
 {
 	"string": "Terran is IMBA!",
@@ -24,7 +25,8 @@
 	"enum": "CLUBS",
 	"record": {"value_field": "Life did not intend to make us perfect. Whoever is perfect belongs in a museum."},
 	"array_of_boolean": [],
-	"bytes": ""
+	"bytes": "",
+    "decimal": "12"
 }
 {
 	"string": "The cake is a LIE!",
@@ -38,5 +40,6 @@
 	"enum": "DIAMONDS",
 	"record": {"value_field": "TEST_STR123"},
 	"array_of_boolean": [false],
-	"bytes": "\u0053"
+	"bytes": "\u0053",
+    "decimal": "123456789012345678901234567.1"
 }

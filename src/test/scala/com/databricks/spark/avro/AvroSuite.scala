@@ -1,3 +1,19 @@
+/*
+ * Copyright 2014 Databricks
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.databricks.spark.avro
 
 import java.io.{FileNotFoundException, File}
@@ -94,7 +110,8 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
 
   test("Incorrect Union Type") {
     TestUtils.withTempDir { dir =>
-      val BadUnionType = Schema.createUnion(List(Schema.create(Type.INT),Schema.create(Type.STRING)))
+      val BadUnionType = Schema.createUnion(List(Schema.create(Type.INT),
+        Schema.create(Type.STRING)))
       val fixedSchema = Schema.createFixed("fixed_name", "doc", "namespace", 20)
       val fixedUnionType = Schema.createUnion(List(fixedSchema,Schema.create(Type.NULL)))
       val fields = Seq(new Field("field1", BadUnionType, "doc", null),
@@ -240,7 +257,8 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
     assert(union1.map(_(0)).toSet == Set(66, 1, null))
 
     val union2 = sqlContext.read.avro(testFile).select("union_float_double").collect()
-    assert(union2.map(x => new java.lang.Double(x(0).toString)).exists(p => Math.abs(p - Math.PI) < 0.001))
+    assert(union2.map(x =>
+      new java.lang.Double(x(0).toString)).exists(p => Math.abs(p - Math.PI) < 0.001))
 
     val fixed = sqlContext.read.avro(testFile).select("fixed3").collect()
     assert(fixed.map(_(0).asInstanceOf[Array[Byte]]).exists(p => p(1) == 3))
@@ -313,10 +331,17 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
       for (i <- arrayOfByte.indices) {
         arrayOfByte(i) = i.toByte
       }
+
+      val bigDecimals = List(new java.math.BigDecimal("99999999999999999999999999999999.123456"),
+        new java.math.BigDecimal("99999999999999999999999999999999.12346"))
+
       val cityRDD = sqlContext.sparkContext.parallelize(Seq(
         Row("San Francisco", 12, new Timestamp(666), null, arrayOfByte),
-        Row("Palo Alto", null, new Timestamp(777), Decimal(new java.math.BigDecimal("99999999999999999999999999999999.123456"),38,5), arrayOfByte),
-        Row("Munich", 8, new Timestamp(42), null, arrayOfByte)))
+        Row("Palo Alto", null, new Timestamp(777),
+          Decimal(bigDecimals(0),38,5),
+          arrayOfByte),
+        Row("Munich", 8, new Timestamp(42),
+          Decimal(bigDecimals(1),38,5), arrayOfByte)))
       val cityDataFrame = sqlContext.createDataFrame(cityRDD, testSchema)
 
       val avroDir = tempDir + "/avro"
@@ -329,7 +354,7 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
 
       // DecimalType should be converted to string
       val decimals = sqlContext.read.avro(avroDir).select("Decimal").collect()
-      assert(decimals.map(_(0)).contains(new java.math.BigDecimal("99999999999999999999999999999999.12346")))
+      assert(bigDecimals.exists(decimals.map(_(0)).contains(_)))
 
       // There should be a null entry
       val length = sqlContext.read.avro(avroDir).select("Length").collect()

@@ -21,12 +21,13 @@ import java.nio.ByteBuffer
 import java.sql.Timestamp
 import java.util.HashMap
 
+import org.apache.avro.Conversions.DecimalConversion
 import org.apache.hadoop.fs.Path
 import scala.collection.immutable.Map
 
 import org.apache.avro.generic.GenericData.Record
 import org.apache.avro.generic.GenericRecord
-import org.apache.avro.{Schema, SchemaBuilder}
+import org.apache.avro._
 import org.apache.avro.mapred.AvroKey
 import org.apache.avro.mapreduce.AvroKeyOutputFormat
 import org.apache.hadoop.conf.Configuration
@@ -107,7 +108,9 @@ private[avro] class AvroOutputWriter(
         if (item == null) null
         else {
           val bigItem = item.asInstanceOf[java.math.BigDecimal]
-          ByteBuffer.wrap(bigItem.unscaledValue().toByteArray)
+          new DecimalConversion().toBytes(bigItem,
+            Schema.create(Schema.Type.BOOLEAN),
+            LogicalTypes.decimal(bigItem.precision(), bigItem.scale()))
         }
       case TimestampType => (item: Any) =>
         if (item == null) null else item.asInstanceOf[Timestamp].getTime

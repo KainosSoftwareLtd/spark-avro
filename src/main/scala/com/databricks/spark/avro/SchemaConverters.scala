@@ -15,30 +15,31 @@
  */
 package com.databricks.spark.avro
 
+import java.math.BigInteger
 import java.nio.ByteBuffer
 import java.util.HashMap
 
-import scala.collection.JavaConversions._
-
+import org.apache.avro.Schema.Type._
+import org.apache.avro.SchemaBuilder._
+import org.apache.avro._
 import org.apache.avro.generic.GenericData.Fixed
 import org.apache.avro.generic.{GenericData, GenericRecord}
-import org.apache.avro.{LogicalTypes, Conversions, Schema, SchemaBuilder}
-import org.apache.avro.SchemaBuilder._
-import org.apache.avro.Schema.Type._
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
 
+import scala.collection.JavaConversions._
+
 /**
- * This object contains method that are used to convert sparkSQL schemas to avro schemas and vice
- * versa.
- */
+  * This object contains method that are used to convert sparkSQL schemas to avro schemas and vice
+  * versa.
+  */
 private object SchemaConverters {
 
   case class SchemaType(dataType: DataType, nullable: Boolean)
 
   /**
-   * This function takes an avro schema and returns a sql schema.
-   */
+    * This function takes an avro schema and returns a sql schema.
+    */
   private[avro] def toSqlType(avroSchema: Schema): SchemaType = {
     avroSchema.getType match {
       case INT => SchemaType(IntegerType, nullable = false)
@@ -49,7 +50,6 @@ private object SchemaConverters {
           avroSchema.getProp("logicalType").equals("decimal")) {
           val precision = avroSchema.getProp("precision")
           val scale = Option(avroSchema.getProp("scale"))
-
           SchemaType(DecimalType(precision.toInt, scale.getOrElse("0").toInt), nullable = false)
         }
         else {
@@ -105,13 +105,13 @@ private object SchemaConverters {
   }
 
   /**
-   * This function converts sparkSQL StructType into avro schema. This method uses two other
-   * converter methods in order to do the conversion.
-   */
+    * This function converts sparkSQL StructType into avro schema. This method uses two other
+    * converter methods in order to do the conversion.
+    */
   private[avro] def convertStructToAvro[T](
-      structType: StructType,
-      schemaBuilder: RecordBuilder[T],
-      recordNamespace: String): T = {
+                                            structType: StructType,
+                                            schemaBuilder: RecordBuilder[T],
+                                            recordNamespace: String): T = {
     val fieldsAssembler: FieldAssembler[T] = schemaBuilder.fields()
     structType.fields.foreach { field =>
       val newField = fieldsAssembler.name(field.name).`type`()
@@ -128,9 +128,9 @@ private object SchemaConverters {
   }
 
   /**
-   * Returns a function that is used to convert avro types to their
-   * corresponding sparkSQL representations.
-   */
+    * Returns a function that is used to convert avro types to their
+    * corresponding sparkSQL representations.
+    */
   private[avro] def createConverterToSQL(schema: Schema): Any => Any = {
     schema.getType match {
       // Avro strings are in Utf8, so we have to call toString on them
@@ -145,27 +145,25 @@ private object SchemaConverters {
       case BYTES => (item: Any) => if (item == null) {
         null
       } else {
-        if (null != schema.getProp("logicalType")
-          && schema.getProp("logicalType").equals("decimal")) {
-          val precision = schema.getProp("precision")
-          val scale = schema.getProp("scale")
+        item match {
+          case bytes: ByteBuffer =>
+            if (null != schema.getProp("logicalType")
+              && schema.getProp("logicalType").equals("decimal")) {
+              val precision = schema.getProp("precision")
+              val scale = schema.getProp("scale")
 
-          if (null == scale) {
-            new Conversions.DecimalConversion().
-              fromBytes(item.asInstanceOf[ByteBuffer], schema,
-                LogicalTypes.decimal(precision.toInt))
-          }
-          else {
-            new Conversions.DecimalConversion().
-              fromBytes(item.asInstanceOf[ByteBuffer], schema,
-                LogicalTypes.decimal(precision.toInt, scale.toInt))
-          }
-        }
-        else {
-          val bytes = item.asInstanceOf[ByteBuffer]
-          val javaBytes = new Array[Byte](bytes.remaining)
-          bytes.get(javaBytes)
-          javaBytes
+              if (null == scale) {
+                decimalFromBytes(bytes, LogicalTypes.decimal(precision.toInt))
+              }
+              else {
+                decimalFromBytes(bytes, LogicalTypes.decimal(precision.toInt, scale.toInt))
+              }
+            }
+            else {
+              val javaBytes = new Array[Byte](bytes.remaining)
+              bytes.get(javaBytes)
+              javaBytes
+            }
         }
       }
       case RECORD =>
@@ -228,15 +226,23 @@ private object SchemaConverters {
     }
   }
 
+  private def decimalFromBytes(value: ByteBuffer, decimal: LogicalTypes.Decimal):
+  BigDecimal = {
+    val scale = decimal.getScale
+    val bytes = new Array[Byte](value.remaining())
+    value.get(bytes)
+    new java.math.BigDecimal(new BigInteger(bytes), scale)
+  }
+
   /**
-   * This function is used to convert some sparkSQL type to avro type. Note that this function won't
-   * be used to construct fields of avro record (convertFieldTypeToAvro is used for that).
-   */
+    * This function is used to convert some sparkSQL type to avro type. Note that this function won't
+    * be used to construct fields of avro record (convertFieldTypeToAvro is used for that).
+    */
   private def convertTypeToAvro[T](
-      dataType: DataType,
-      schemaBuilder: BaseTypeBuilder[T],
-      structName: String,
-      recordNamespace: String): T = {
+                                    dataType: DataType,
+                                    schemaBuilder: BaseTypeBuilder[T],
+                                    structName: String,
+                                    recordNamespace: String): T = {
     dataType match {
       case ByteType => schemaBuilder.intType()
       case ShortType => schemaBuilder.intType()
@@ -246,8 +252,9 @@ private object SchemaConverters {
       case DoubleType => schemaBuilder.doubleType()
       case _: DecimalType =>
         val decimalType = dataType.asInstanceOf[DecimalType]
-        schemaBuilder.bytesBuilder().prop("logicalType","decimal").
-          prop("precision",s"${decimalType.precision}").prop("scale",s"${decimalType.scale}").endBytes()
+        schemaBuilder.bytesBuilder().prop("logicalType", "decimal").
+          prop("precision", s"${decimalType.precision}").
+          prop("scale", s"${decimalType.scale}").endBytes()
       case StringType => schemaBuilder.stringType()
       case BinaryType => schemaBuilder.bytesType()
       case BooleanType => schemaBuilder.booleanType()
@@ -274,15 +281,15 @@ private object SchemaConverters {
   }
 
   /**
-   * This function is used to construct fields of the avro record, where schema of the field is
-   * specified by avro representation of dataType. Since builders for record fields are different
-   * from those for everything else, we have to use a separate method.
-   */
+    * This function is used to construct fields of the avro record, where schema of the field is
+    * specified by avro representation of dataType. Since builders for record fields are different
+    * from those for everything else, we have to use a separate method.
+    */
   private def convertFieldTypeToAvro[T](
-      dataType: DataType,
-      newFieldBuilder: BaseFieldTypeBuilder[T],
-      structName: String,
-      recordNamespace: String): FieldDefault[T, _] = {
+                                         dataType: DataType,
+                                         newFieldBuilder: BaseFieldTypeBuilder[T],
+                                         structName: String,
+                                         recordNamespace: String): FieldDefault[T, _] = {
     dataType match {
       case ByteType => newFieldBuilder.intType()
       case ShortType => newFieldBuilder.intType()
@@ -292,8 +299,9 @@ private object SchemaConverters {
       case DoubleType => newFieldBuilder.doubleType()
       case _: DecimalType =>
         val decimalType = dataType.asInstanceOf[DecimalType]
-        newFieldBuilder.bytesBuilder().prop("logicalType","decimal").
-          prop("precision",s"${decimalType.precision}").prop("scale",s"${decimalType.scale}").endBytes()
+        newFieldBuilder.bytesBuilder().prop("logicalType", "decimal").
+          prop("precision", s"${decimalType.precision}").
+          prop("scale", s"${decimalType.scale}").endBytes()
       case StringType => newFieldBuilder.stringType()
       case BinaryType => newFieldBuilder.bytesType()
       case BooleanType => newFieldBuilder.booleanType()

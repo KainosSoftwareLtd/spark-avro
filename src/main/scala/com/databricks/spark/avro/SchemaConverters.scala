@@ -44,18 +44,7 @@ private object SchemaConverters {
       case INT => SchemaType(IntegerType, nullable = false)
       case STRING => SchemaType(StringType, nullable = false)
       case BOOLEAN => SchemaType(BooleanType, nullable = false)
-      case BYTES => {
-        if (null != avroSchema.getProp("logicalType") &&
-          avroSchema.getProp("logicalType").equals("decimal")) {
-          val precision = avroSchema.getProp("precision")
-          val scale = Option(avroSchema.getProp("scale"))
-
-          SchemaType(DecimalType(precision.toInt, scale.getOrElse("0").toInt), nullable = false)
-        }
-        else {
-          SchemaType(BinaryType, nullable = false)
-        }
-      }
+      case BYTES => SchemaType(LogicalTypeConverters.toSqlType(avroSchema.getLogicalType()).getOrElse(BinaryType), nullable = false)
       case DOUBLE => SchemaType(DoubleType, nullable = false)
       case FLOAT => SchemaType(FloatType, nullable = false)
       case LONG => SchemaType(LongType, nullable = false)
@@ -145,23 +134,9 @@ private object SchemaConverters {
       case BYTES => (item: Any) => if (item == null) {
         null
       } else {
-        if (null != schema.getProp("logicalType")
-          && schema.getProp("logicalType").equals("decimal")) {
-          val precision = schema.getProp("precision")
-          val scale = schema.getProp("scale")
-
-          if (null == scale) {
-            new Conversions.DecimalConversion().
-              fromBytes(item.asInstanceOf[ByteBuffer], schema,
-                LogicalTypes.decimal(precision.toInt))
-          }
-          else {
-            new Conversions.DecimalConversion().
-              fromBytes(item.asInstanceOf[ByteBuffer], schema,
-                LogicalTypes.decimal(precision.toInt, scale.toInt))
-          }
-        }
-        else {
+        if(null != schema.getLogicalType) {
+          LogicalTypeConverters.toSql(schema.getLogicalType, item, schema)
+        } else {
           val bytes = item.asInstanceOf[ByteBuffer]
           val javaBytes = new Array[Byte](bytes.remaining)
           bytes.get(javaBytes)
@@ -246,8 +221,8 @@ private object SchemaConverters {
       case DoubleType => schemaBuilder.doubleType()
       case _: DecimalType =>
         val decimalType = dataType.asInstanceOf[DecimalType]
-        schemaBuilder.bytesBuilder().prop("logicalType","decimal").
-          prop("precision",s"${decimalType.precision}").prop("scale",s"${decimalType.scale}").endBytes()
+        schemaBuilder.bytesBuilder().prop("logicalType", "decimal").
+          prop("precision", s"${decimalType.precision}").prop("scale", s"${decimalType.scale}").endBytes()
       case StringType => schemaBuilder.stringType()
       case BinaryType => schemaBuilder.bytesType()
       case BooleanType => schemaBuilder.booleanType()
@@ -257,6 +232,7 @@ private object SchemaConverters {
         val builder = getSchemaBuilder(dataType.asInstanceOf[ArrayType].containsNull)
         val elementSchema = convertTypeToAvro(elementType, builder, structName, recordNamespace)
         schemaBuilder.array().items(elementSchema)
+
 
       case MapType(StringType, valueType, _) =>
         val builder = getSchemaBuilder(dataType.asInstanceOf[MapType].valueContainsNull)

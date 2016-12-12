@@ -15,17 +15,46 @@
  */
 package com.databricks.spark.avro
 
+import java.math.BigDecimal
+import java.nio.ByteBuffer
+import java.sql.Timestamp
+
+import org.apache.avro.{Schema, _}
+import org.apache.avro.LogicalTypes.Decimal
+import org.apache.spark.sql.types._
+
 /**
   * This object contains methods that are used to convert
   * Avro Logical types to Spark SQL schemas and vice versa.
   */
 private object LogicalTypeConverters {
 
-  private[avro] def convertFieldTypeToLogical = Unit
+  private[avro] def convertFieldTypeToLogical(): Unit = {
+
+  }
 
   private[avro] def convertToLogicalValue = Unit
 
-  private[avro] def toSqlType = Unit
+  private[avro] def toSqlType(logicalType: LogicalType): Option[DataType] = logicalType match {
+    case decimalType:Decimal  => Some(DecimalType(decimalType.getPrecision, decimalType.getScale))
+    case _                    => None
+  }
 
-  private[avro] def toSql = Unit
+  private[avro] def toSql(logicalType: LogicalType, item: Any, schema: Schema): Option[BigDecimal] = logicalType match {
+    case decimalType: Decimal => Some(new Conversions.DecimalConversion().fromBytes(
+      item.asInstanceOf[ByteBuffer],
+      schema,
+      schema.getProp("scale") match {
+        case null =>
+          LogicalTypes.decimal(
+            decimalType.getPrecision
+          )
+        case _ => LogicalTypes.decimal(
+          decimalType.getPrecision,
+          decimalType.getScale
+        )
+      })
+    )
+    case _ => None
+  }
 }

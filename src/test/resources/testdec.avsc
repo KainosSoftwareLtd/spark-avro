@@ -1,0 +1,13 @@
+{
+  "type" : "record",
+  "name" : "test_schema",
+  "fields" : [{
+    "name": "decimals",
+    "type": {
+      "logicalType": "decimal",
+      "type": "bytes",
+      "precision": 32,
+      "scale": 5
+    }
+  }]
+}

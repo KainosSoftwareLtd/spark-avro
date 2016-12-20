@@ -106,8 +106,7 @@ private[avro] class AvroOutputWriter(
       case _: DecimalType => (item: Any) =>
         if (item == null) null
         else {
-          val bigItem = item.asInstanceOf[java.math.BigDecimal]
-          ByteBuffer.wrap(bigItem.unscaledValue().toByteArray)
+          LogicalTypeConverters.convertToLogicalValue(item)
         }
       case TimestampType => (item: Any) =>
         if (item == null) null else item.asInstanceOf[Timestamp].getTime

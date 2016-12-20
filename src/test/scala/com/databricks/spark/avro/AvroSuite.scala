@@ -1,19 +1,19 @@
 package com.databricks.spark.avro
 
-import java.io.{FileNotFoundException, File}
+import java.io.{File, FileNotFoundException}
+import java.math.BigInteger
 import java.nio.ByteBuffer
 import java.sql.Timestamp
 import java.util.UUID
 
 import scala.collection.JavaConversions._
-
-import org.apache.avro.Schema
-import org.apache.avro.Schema.{Type, Field}
+import org.apache.avro.{LogicalType, LogicalTypes, Schema, SchemaBuilder}
+import org.apache.avro.Schema.{Field, Type}
 import org.apache.avro.file.DataFileWriter
-import org.apache.avro.generic.{GenericData, GenericRecord, GenericDatumWriter}
+import org.apache.avro.generic.{GenericData, GenericDatumWriter, GenericRecord}
 import org.apache.commons.io.FileUtils
 import org.apache.spark.SparkContext
-import org.apache.spark.sql.{SQLContext, Row}
+import org.apache.spark.sql.{Row, SQLContext}
 import org.apache.spark.sql.types._
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
@@ -417,6 +417,29 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
       df.write.avro(tempSaveDir)
       val newDf = sqlContext.read.avro(tempSaveDir)
       assert(newDf.count == 8)
+    }
+  }
+
+  test("test for conversion from logical type to sql type") {
+    TestUtils.withTempDir { dir =>
+      val df = sqlContext.read.avro("resources/decimalspart0.avro")
+      val build = SchemaBuilder.record("topLevelRecord").namespace("")
+      val avroSchema = SchemaConverters.convertStructToAvro(df.schema, build, "")
+      //avroSchema.addProp(LogicalType.LOGICAL_TYPE_PROP, "decimal")
+      avroSchema.getLogicalType.addToSchema(avroSchema)
+      val conversion = LogicalTypeConverters.toSqlType(avroSchema.getLogicalType)
+      assert(conversion == DecimalType)
+    }
+  }
+
+  test("test for conversions from AVRO type to SQL") {
+    TestUtils.withTempDir { dir =>
+      val df = sqlContext.read.avro("resources/decimalspart0.avro")
+      val build = SchemaBuilder.record("topLevelRecord").namespace("")
+      val avroSchema = SchemaConverters.convertStructToAvro(df.schema, build, "")
+      avroSchema.getLogicalType.addToSchema(avroSchema)
+      val conversion = LogicalTypeConverters.toSql(avroSchema.getLogicalType, df.schema.fields(0) ,avroSchema)
+      assert(conversion == BigDecimal)
     }
   }
 }

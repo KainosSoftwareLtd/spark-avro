@@ -29,8 +29,16 @@ import org.apache.spark.sql.types._
 
 private object LogicalTypeConverters {
 
-  private[avro] def convertFieldTypeToLogical(): Unit = {
-
+  /**
+  * Converts a supported Spark SQL datatype to the correct avro schema before applying the
+  * logical type schema
+  */
+  private[avro] def convertDataTypeToLogical(dataType: DataType): Schema = {
+    dataType match {
+      case decimalType: DecimalType =>
+        val bytesSchema = Schema.create(Schema.Type.BYTES)
+        LogicalTypes.decimal(decimalType.precision, decimalType.scale).addToSchema(bytesSchema)
+    }
   }
 
   private[avro] def convertToLogicalValue(item: Any): ByteBuffer = {

@@ -15,8 +15,9 @@
  */
 package com.databricks.spark.avro
 
-import java.math.BigDecimal
+import java.math.{BigDecimal, BigInteger}
 import java.nio.ByteBuffer
+
 import org.apache.avro.{Schema, _}
 import org.apache.avro.LogicalTypes.Decimal
 import org.apache.spark.sql.types._
@@ -37,26 +38,28 @@ private object LogicalTypeConverters {
     ByteBuffer.wrap(bigItem.unscaledValue().toByteArray)
   }
 
-  private[avro] def toSqlType(datatype: LogicalType): Option[DecimalType] = datatype match {
-    case decimal: Decimal => Some(DecimalType(decimal.getPrecision, decimal.getScale))
-    case _ => None
+  private[avro] def toSqlType(datatype: LogicalType): Option[DecimalType] = {
+    datatype match {
+      case decimal: Decimal => Some(DecimalType(decimal.getPrecision, decimal.getScale))
+      case _ => None
+    }
   }
 
-  private[avro] def toSql(logicalType: LogicalType, item: Any, schema: Schema): Option[BigDecimal] = logicalType match {
-    case decimalType: Decimal => Some(new Conversions.DecimalConversion().fromBytes(
-      item.asInstanceOf[ByteBuffer],
-      schema,
-      schema.getProp("scale") match {
-        case null =>
-          LogicalTypes.decimal(
-            decimalType.getPrecision
-          )
-        case _ => LogicalTypes.decimal(
-          decimalType.getPrecision,
-          decimalType.getScale
-        )
-      })
-    )
-    case _ => None
+  private[avro] def toSql(logicalType: LogicalType,
+                          item: Any,
+                          schema: Schema): Option[BigDecimal] = {
+    logicalType match {
+      case decimalType: LogicalTypes.Decimal =>
+        Some(decimalFromBytes(item.asInstanceOf[ByteBuffer], schema, decimalType))
+      case _ => None
+    }
+  }
+
+  private[avro] def decimalFromBytes(value: ByteBuffer,
+                              schema: Schema,
+                              decimalType: LogicalTypes.Decimal): BigDecimal = {
+    val result = new Array[Byte](value.remaining)
+    value.get(result)
+    new BigDecimal(new BigInteger(result), decimalType.getScale)
   }
 }

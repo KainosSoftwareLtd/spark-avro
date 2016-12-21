@@ -43,11 +43,18 @@ private object LogicalTypeConverters {
     }
   }
 
+  /**
+    * Converts a supported Spark SQL value to the correct avro value
+    * Currently only supports BigDecimal to ByteBuffer conversions
+    */
   private[avro] def convertToLogicalValue(item: Any): ByteBuffer = {
     val bigItem = item.asInstanceOf[java.math.BigDecimal]
     ByteBuffer.wrap(bigItem.unscaledValue().toByteArray)
   }
 
+  /**
+    * Converts a supported Avro LogicalType to SparkSQL Datatype
+    */
   private[avro] def toSqlType(datatype: LogicalType): Option[DecimalType] = {
     datatype match {
       case decimal: Decimal => Some(DecimalType(decimal.getPrecision, decimal.getScale))
@@ -55,9 +62,12 @@ private object LogicalTypeConverters {
     }
   }
 
-  private[avro] def toSql(logicalType: LogicalType,
-                          item: Any,
-                          schema: Schema): Option[BigDecimal] = {
+  /**
+    * Converts a supported Avro LogicalType value to SparkSQL value
+    */
+  private[avro] def toSqlValue(logicalType: LogicalType,
+                               item: Any,
+                               schema: Schema): Option[BigDecimal] = {
     logicalType match {
       case decimalType: LogicalTypes.Decimal =>
         Some(decimalFromBytes(item.asInstanceOf[ByteBuffer], schema, decimalType))
@@ -65,6 +75,9 @@ private object LogicalTypeConverters {
     }
   }
 
+  /**
+    * Handles the BigDecimal to Bytes conversion for the Avro Decimal type
+    */
   private[avro] def decimalFromBytes(value: ByteBuffer,
                               schema: Schema,
                               decimalType: LogicalTypes.Decimal): BigDecimal = {

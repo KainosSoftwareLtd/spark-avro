@@ -19,11 +19,9 @@ import java.nio.ByteBuffer
 import java.util.HashMap
 
 import scala.collection.JavaConversions._
-
 import org.apache.avro.generic.GenericData.Fixed
 import org.apache.avro.generic.{GenericData, GenericRecord}
-import org.apache.avro.{LogicalTypes, Conversions, Schema, SchemaBuilder}
-import org.apache.avro.SchemaBuilder._
+import org.apache.avro._
 import org.apache.avro.Schema.Type._
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
@@ -95,26 +93,75 @@ private object SchemaConverters {
   }
 
   /**
-   * This function converts sparkSQL StructType into avro schema. This method uses two other
-   * converter methods in order to do the conversion.
-   */
-  private[avro] def convertStructToAvro[T](
-      structType: StructType,
-      schemaBuilder: RecordBuilder[T],
-      recordNamespace: String): T = {
-    val fieldsAssembler: FieldAssembler[T] = schemaBuilder.fields()
-    structType.fields.foreach { field =>
-      val newField = fieldsAssembler.name(field.name).`type`()
+  * This function converts sparkSQL StructType into avro schema. This method uses the convertFieldType
+  * converter method in order to do the conversion.
+  */
+  private[avro] def convertStructToAvro(structType: StructType,
+                                        structName: String,
+                                        recordNamespace: String): Schema = {
+    val fields = structType.fields.map { structField =>
+      val fieldSchema = convertFieldType(structField.dataType, structField.name, recordNamespace)
 
-      if (field.nullable) {
-        convertFieldTypeToAvro(field.dataType, newField.nullable(), field.name, recordNamespace)
-          .noDefault
-      } else {
-        convertFieldTypeToAvro(field.dataType, newField, field.name, recordNamespace)
-          .noDefault
+      if (structField.nullable) {
+        new Schema.Field(structField.name, optional(fieldSchema), null, JsonProperties.NULL_VALUE)
       }
+      else {
+        new Schema.Field(structField.name, fieldSchema, null, null.asInstanceOf[Object])
+      }
+    }.toList
+
+    Schema.createRecord(structName, null, recordNamespace, false, fields)
+  }
+
+  /**
+  * This function is used to construct field schemas of the avro record.
+  * The data type of each field is used to determine which field schema to create.
+  */
+  private[avro] def convertFieldType(dataType: DataType,
+                                     structName: String,
+                                     recordNamespace: String): Schema = {
+    dataType match {
+      case ByteType => Schema.create(Schema.Type.INT)
+      case ShortType => Schema.create(Schema.Type.INT)
+      case IntegerType => Schema.create(Schema.Type.INT)
+      case LongType => Schema.create(Schema.Type.LONG)
+      case FloatType => Schema.create(Schema.Type.FLOAT)
+      case DoubleType => Schema.create(Schema.Type.DOUBLE)
+      case decimalType: DecimalType =>
+        LogicalTypeConverters.convertDataTypeToLogical(decimalType)
+      case StringType => Schema.create(Schema.Type.STRING)
+      case BinaryType => Schema.create(Schema.Type.BYTES)
+      case BooleanType => Schema.create(Schema.Type.BOOLEAN)
+      case TimestampType => Schema.create(Schema.Type.LONG)
+
+      case ArrayType(elementType, _) =>
+        if (dataType.asInstanceOf[ArrayType].containsNull) {
+          Schema.createArray(optional(convertFieldType(elementType, structName, recordNamespace)))
+        }
+        else {
+          Schema.createArray(convertFieldType(elementType, structName, recordNamespace))
+        }
+
+      case MapType(StringType, valueType, _) =>
+        if (dataType.asInstanceOf[MapType].valueContainsNull) {
+          Schema.createMap(optional(convertFieldType(valueType, structName, recordNamespace)))
+        }
+        else {
+          Schema.createMap(convertFieldType(valueType, structName, recordNamespace))
+        }
+
+      case structType: StructType =>
+        convertStructToAvro(structType, structName, recordNamespace)
+
+      case other => throw new UnsupportedOperationException(s"Unexpected type $dataType.")
     }
-    fieldsAssembler.endRecord()
+  }
+
+  /**
+  * Creates a Union of null and the original field schema to enable optional schemas
+  */
+  private[avro] def optional(original: Schema): Schema = {
+    Schema.createUnion(Schema.create(Schema.Type.NULL), original)
   }
 
   /**
@@ -202,106 +249,6 @@ private object SchemaConverters {
             s"This mix of union types is not supported (see README): $other")
         }
       case other => throw new UnsupportedOperationException(s"invalid avro type: $other")
-    }
-  }
-
-  /**
-   * This function is used to convert some sparkSQL type to avro type. Note that this function won't
-   * be used to construct fields of avro record (convertFieldTypeToAvro is used for that).
-   */
-  private def convertTypeToAvro[T](
-      dataType: DataType,
-      schemaBuilder: BaseTypeBuilder[T],
-      structName: String,
-      recordNamespace: String): T = {
-    dataType match {
-      case ByteType => schemaBuilder.intType()
-      case ShortType => schemaBuilder.intType()
-      case IntegerType => schemaBuilder.intType()
-      case LongType => schemaBuilder.longType()
-      case FloatType => schemaBuilder.floatType()
-      case DoubleType => schemaBuilder.doubleType()
-      case _: DecimalType =>
-        val decimalType = dataType.asInstanceOf[DecimalType]
-        schemaBuilder.bytesBuilder().prop("logicalType", "decimal").
-          prop("precision", s"${decimalType.precision}").prop("scale", s"${decimalType.scale}").endBytes()
-      case StringType => schemaBuilder.stringType()
-      case BinaryType => schemaBuilder.bytesType()
-      case BooleanType => schemaBuilder.booleanType()
-      case TimestampType => schemaBuilder.longType()
-
-      case ArrayType(elementType, _) =>
-        val builder = getSchemaBuilder(dataType.asInstanceOf[ArrayType].containsNull)
-        val elementSchema = convertTypeToAvro(elementType, builder, structName, recordNamespace)
-        schemaBuilder.array().items(elementSchema)
-
-
-      case MapType(StringType, valueType, _) =>
-        val builder = getSchemaBuilder(dataType.asInstanceOf[MapType].valueContainsNull)
-        val valueSchema = convertTypeToAvro(valueType, builder, structName, recordNamespace)
-        schemaBuilder.map().values(valueSchema)
-
-      case structType: StructType =>
-        convertStructToAvro(
-          structType,
-          schemaBuilder.record(structName).namespace(recordNamespace),
-          recordNamespace)
-
-      case other => throw new IllegalArgumentException(s"Unexpected type $dataType.")
-    }
-  }
-
-  /**
-   * This function is used to construct fields of the avro record, where schema of the field is
-   * specified by avro representation of dataType. Since builders for record fields are different
-   * from those for everything else, we have to use a separate method.
-   */
-  private def convertFieldTypeToAvro[T](
-      dataType: DataType,
-      newFieldBuilder: BaseFieldTypeBuilder[T],
-      structName: String,
-      recordNamespace: String): FieldDefault[T, _] = {
-    dataType match {
-      case ByteType => newFieldBuilder.intType()
-      case ShortType => newFieldBuilder.intType()
-      case IntegerType => newFieldBuilder.intType()
-      case LongType => newFieldBuilder.longType()
-      case FloatType => newFieldBuilder.floatType()
-      case DoubleType => newFieldBuilder.doubleType()
-      case _: DecimalType =>
-        val decimalType = dataType.asInstanceOf[DecimalType]
-        newFieldBuilder.bytesBuilder().prop("logicalType","decimal").
-          prop("precision",s"${decimalType.precision}").prop("scale",s"${decimalType.scale}").endBytes()
-      case StringType => newFieldBuilder.stringType()
-      case BinaryType => newFieldBuilder.bytesType()
-      case BooleanType => newFieldBuilder.booleanType()
-      case TimestampType => newFieldBuilder.longType()
-
-      case ArrayType(elementType, _) =>
-        val builder = getSchemaBuilder(dataType.asInstanceOf[ArrayType].containsNull)
-        val elementSchema = convertTypeToAvro(elementType, builder, structName, recordNamespace)
-        newFieldBuilder.array().items(elementSchema)
-
-      case MapType(StringType, valueType, _) =>
-        val builder = getSchemaBuilder(dataType.asInstanceOf[MapType].valueContainsNull)
-        val valueSchema = convertTypeToAvro(valueType, builder, structName, recordNamespace)
-        newFieldBuilder.map().values(valueSchema)
-
-      case structType: StructType =>
-        convertStructToAvro(
-          structType,
-          newFieldBuilder.record(structName).namespace(recordNamespace),
-          recordNamespace)
-
-      case other => throw new UnsupportedOperationException(s"Unexpected type $dataType.")
-    }
-  }
-
-  private def getSchemaBuilder(isNullable: Boolean): BaseTypeBuilder[Schema] = {
-    if (isNullable) {
-      SchemaBuilder.builder().nullable()
-    } else {
-      SchemaBuilder.builder()
     }
   }
 }

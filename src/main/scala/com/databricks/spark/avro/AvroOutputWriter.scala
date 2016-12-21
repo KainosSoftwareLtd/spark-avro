@@ -141,9 +141,7 @@ private[avro] class AvroOutputWriter(
           }
         }
       case structType: StructType =>
-        val builder = SchemaBuilder.record(structName).namespace(recordNamespace)
-        val schema: Schema = SchemaConverters.convertStructToAvro(
-          structType, builder, recordNamespace)
+        val schema = SchemaConverters.convertStructToAvro(structType, structName, recordNamespace)
         val fieldConverters = structType.fields.map(field =>
           createConverterToAvro(field.dataType, field.name, recordNamespace))
         (item: Any) => {

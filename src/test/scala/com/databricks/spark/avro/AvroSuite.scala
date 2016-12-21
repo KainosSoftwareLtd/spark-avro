@@ -424,7 +424,7 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
     TestUtils.withTempDir { dir =>
       val df = sqlContext.read.avro("resources/decimalspart0.avro")
       val build = SchemaBuilder.record("topLevelRecord").namespace("")
-      val avroSchema = SchemaConverters.convertStructToAvro(df.schema, build, "")
+      val avroSchema = SchemaConverters.convertStructToAvro(df.schema, "topLevelRecord", "")
       //avroSchema.addProp(LogicalType.LOGICAL_TYPE_PROP, "decimal")
       avroSchema.getLogicalType.addToSchema(avroSchema)
       val conversion = LogicalTypeConverters.toSqlType(avroSchema.getLogicalType)
@@ -436,7 +436,7 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
     TestUtils.withTempDir { dir =>
       val df = sqlContext.read.avro("resources/decimalspart0.avro")
       val build = SchemaBuilder.record("topLevelRecord").namespace("")
-      val avroSchema = SchemaConverters.convertStructToAvro(df.schema, build, "")
+      val avroSchema = SchemaConverters.convertStructToAvro(df.schema, "topLevelRecord", "")
       avroSchema.getLogicalType.addToSchema(avroSchema)
       val conversion = LogicalTypeConverters.toSql(avroSchema.getLogicalType, df.schema.fields(0) ,avroSchema)
       assert(conversion == BigDecimal)

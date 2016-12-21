@@ -21,10 +21,8 @@ import java.util.zip.Deflater
 
 import scala.collection.Iterator
 import scala.collection.JavaConversions._
-import scala.collection.mutable.ArrayBuffer
 
 import com.google.common.base.Objects
-import org.apache.avro.SchemaBuilder
 import org.apache.avro.file.{DataFileConstants, DataFileReader, FileReader}
 import org.apache.avro.generic.{GenericDatumReader, GenericRecord}
 import org.apache.avro.mapred.{AvroOutputFormat, FsInput}
@@ -79,8 +77,9 @@ private[avro] class AvroRelation(
    * @since 1.4.0
    */
   override def prepareJobForWrite(job: Job): OutputWriterFactory = {
-    val build = SchemaBuilder.record(recordName).namespace(recordNamespace)
-    val outputAvroSchema = SchemaConverters.convertStructToAvro(dataSchema, build, recordNamespace)
+    val outputAvroSchema = SchemaConverters.convertStructToAvro(dataSchema,
+      recordName,
+      recordNamespace)
     AvroJob.setOutputKeySchema(job, outputAvroSchema)
     val AVRO_COMPRESSION_CODEC = "spark.sql.avro.compression.codec"
     val AVRO_DEFLATE_LEVEL = "spark.sql.avro.deflate.level"

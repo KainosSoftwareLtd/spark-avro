@@ -38,6 +38,8 @@ private object LogicalTypeConverters {
       case decimalType: DecimalType =>
         val bytesSchema = Schema.create(Schema.Type.BYTES)
         LogicalTypes.decimal(decimalType.precision, decimalType.scale).addToSchema(bytesSchema)
+      case other =>
+        throw new UnsupportedOperationException(s"Unsupported logical type conversion $other")
     }
   }
 

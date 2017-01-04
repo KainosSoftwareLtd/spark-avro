@@ -91,14 +91,14 @@ At the moment, `spark-avro` ignores docs, aliases and other properties present i
 
 `spark-avro` supports writing of all Spark SQL types into Avro. For most types, the mapping from Spark types to Avro types is straightforward (e.g. IntegerType gets converted to int); however, there are a few special cases which are listed below:
 
-| Spark SQL type | Avro type |
-| ---------------|-----------|
-| ByteType       | int       |
-| ShortType      | int       |
-| DecimalType    | string    |
-| BinaryType     | bytes     |
-| TimestampType  | long      |
-| StructType     | record    |
+| Spark SQL type | Avro type | LogicalType | 
+| ---------------|-----------|--------------
+| ByteType       | int       |		   |
+| ShortType      | int       |		   |
+| DecimalType    | bytes     | decimal	   |
+| BinaryType     | bytes     |		   |
+| TimestampType  | long      |		   |
+| StructType     | record    |		   |	
 
 ## Examples
 

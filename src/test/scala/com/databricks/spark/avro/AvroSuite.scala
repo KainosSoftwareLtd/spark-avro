@@ -1,25 +1,42 @@
+/*
+ * Copyright 2014 Databricks
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.databricks.spark.avro
 
 import java.io.{File, FileNotFoundException}
-import java.math.BigInteger
 import java.nio.ByteBuffer
 import java.sql.Timestamp
 import java.util.UUID
 
-import scala.collection.JavaConversions._
-import org.apache.avro.{LogicalType, LogicalTypes, Schema, SchemaBuilder}
 import org.apache.avro.Schema.{Field, Type}
 import org.apache.avro.file.DataFileWriter
 import org.apache.avro.generic.{GenericData, GenericDatumWriter, GenericRecord}
+import org.apache.avro.{Schema, SchemaBuilder}
 import org.apache.commons.io.FileUtils
 import org.apache.spark.SparkContext
-import org.apache.spark.sql.{Row, SQLContext}
 import org.apache.spark.sql.types._
+import org.apache.spark.sql.{Row, SQLContext}
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
+
+import scala.collection.JavaConversions._
 
 class AvroSuite extends FunSuite with BeforeAndAfterAll {
   val episodesFile = "src/test/resources/episodes.avro"
   val testFile = "src/test/resources/test.avro"
+  val logicalFile = "src/test/resources/logical.avro"
 
   private var sqlContext: SQLContext = _
 
@@ -94,9 +111,9 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
 
   test("Incorrect Union Type") {
     TestUtils.withTempDir { dir =>
-      val BadUnionType = Schema.createUnion(List(Schema.create(Type.INT),Schema.create(Type.STRING)))
+      val BadUnionType = Schema.createUnion(List(Schema.create(Type.INT), Schema.create(Type.STRING)))
       val fixedSchema = Schema.createFixed("fixed_name", "doc", "namespace", 20)
-      val fixedUnionType = Schema.createUnion(List(fixedSchema,Schema.create(Type.NULL)))
+      val fixedUnionType = Schema.createUnion(List(fixedSchema, Schema.create(Type.NULL)))
       val fields = Seq(new Field("field1", BadUnionType, "doc", null),
         new Field("fixed", fixedUnionType, "doc", null),
         new Field("bytes", Schema.create(Type.BYTES), "doc", null))
@@ -126,7 +143,7 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
         StructField("map", MapType(StringType, StringType), true),
         StructField("struct", StructType(Seq(StructField("int", IntegerType, true))))))
       val rdd = sqlContext.sparkContext.parallelize(Seq[Row](
-        Row(null, new Timestamp(1), Array[Short](1,2,3), null, null),
+        Row(null, new Timestamp(1), Array[Short](1, 2, 3), null, null),
         Row(null, null, null, null, null),
         Row(null, null, null, null, null),
         Row(null, null, null, null, null)))
@@ -176,7 +193,7 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
       }
 
       val rdd = sqlContext.sparkContext.parallelize(Seq(
-        Row(arrayOfByte, Array[Short](1,2,3,4), Array[Float](1f, 2f, 3f, 4f),
+        Row(arrayOfByte, Array[Short](1, 2, 3, 4), Array[Float](1f, 2f, 3f, 4f),
           Array[Boolean](true, false, true, false), Array[Long](1L, 2L), Array[Double](1.0, 2.0),
           Array[BigDecimal](BigDecimal.valueOf(3)), Array[Array[Byte]](arrayOfByte, arrayOfByte),
           Array[Timestamp](new Timestamp(0)),
@@ -227,36 +244,36 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
     assert(all.length == 3)
 
     val str = sqlContext.read.avro(testFile).select("string").collect()
-    assert(str.map(_(0)).toSet.contains("Terran is IMBA!"))
+    assert(str.map(_ (0)).toSet.contains("Terran is IMBA!"))
 
     val simple_map = sqlContext.read.avro(testFile).select("simple_map").collect()
     assert(simple_map(0)(0).getClass.toString.contains("Map"))
-    assert(simple_map.map(_(0).asInstanceOf[Map[String, Some[Int]]].size).toSet == Set(2, 0))
+    assert(simple_map.map(_ (0).asInstanceOf[Map[String, Some[Int]]].size).toSet == Set(2, 0))
 
     val union0 = sqlContext.read.avro(testFile).select("union_string_null").collect()
-    assert(union0.map(_(0)).toSet == Set("abc", "123", null))
+    assert(union0.map(_ (0)).toSet == Set("abc", "123", null))
 
     val union1 = sqlContext.read.avro(testFile).select("union_int_long_null").collect()
-    assert(union1.map(_(0)).toSet == Set(66, 1, null))
+    assert(union1.map(_ (0)).toSet == Set(66, 1, null))
 
     val union2 = sqlContext.read.avro(testFile).select("union_float_double").collect()
     assert(union2.map(x => new java.lang.Double(x(0).toString)).exists(p => Math.abs(p - Math.PI) < 0.001))
 
     val fixed = sqlContext.read.avro(testFile).select("fixed3").collect()
-    assert(fixed.map(_(0).asInstanceOf[Array[Byte]]).exists(p => p(1) == 3))
+    assert(fixed.map(_ (0).asInstanceOf[Array[Byte]]).exists(p => p(1) == 3))
 
     val enum = sqlContext.read.avro(testFile).select("enum").collect()
-    assert(enum.map(_(0)).toSet == Set("SPADES", "CLUBS", "DIAMONDS"))
+    assert(enum.map(_ (0)).toSet == Set("SPADES", "CLUBS", "DIAMONDS"))
 
     val record = sqlContext.read.avro(testFile).select("record").collect()
     assert(record(0)(0).getClass.toString.contains("Row"))
-    assert(record.map(_(0).asInstanceOf[Row](0)).contains("TEST_STR123"))
+    assert(record.map(_ (0).asInstanceOf[Row](0)).contains("TEST_STR123"))
 
     val array_of_boolean = sqlContext.read.avro(testFile).select("array_of_boolean").collect()
-    assert(array_of_boolean.map(_(0).asInstanceOf[Seq[Boolean]].size).toSet == Set(3, 1, 0))
+    assert(array_of_boolean.map(_ (0).asInstanceOf[Seq[Boolean]].size).toSet == Set(3, 1, 0))
 
     val bytes = sqlContext.read.avro(testFile).select("bytes").collect()
-    assert(bytes.map(_(0).asInstanceOf[Array[Byte]].length).toSet == Set(3, 1, 0))
+    assert(bytes.map(_ (0).asInstanceOf[Array[Byte]].length).toSet == Set(3, 1, 0))
   }
 
   test("sql test") {
@@ -306,7 +323,7 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
         StructField("Name", StringType, false),
         StructField("Length", IntegerType, true),
         StructField("Time", TimestampType, false),
-        StructField("Decimal", DecimalType(38,5), true),
+        StructField("Decimal", DecimalType(38, 5), true),
         StructField("Binary", BinaryType, false)))
 
       val arrayOfByte = new Array[Byte](4)
@@ -315,7 +332,8 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
       }
       val cityRDD = sqlContext.sparkContext.parallelize(Seq(
         Row("San Francisco", 12, new Timestamp(666), null, arrayOfByte),
-        Row("Palo Alto", null, new Timestamp(777), Decimal(new java.math.BigDecimal("99999999999999999999999999999999.123456"),38,5), arrayOfByte),
+        Row("Palo Alto", null, new Timestamp(777),
+          Decimal(new java.math.BigDecimal("99999999999999999999999999999999.123456"), 38, 5), arrayOfByte),
         Row("Munich", 8, new Timestamp(42), null, arrayOfByte)))
       val cityDataFrame = sqlContext.createDataFrame(cityRDD, testSchema)
 
@@ -325,15 +343,16 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
 
       // TimesStamps are converted to longs
       val times = sqlContext.read.avro(avroDir).select("Time").collect()
-      assert(times.map(_(0)).toSet == Set(666, 777, 42))
+      assert(times.map(_ (0)).toSet == Set(666, 777, 42))
 
       // DecimalType should be converted to string
       val decimals = sqlContext.read.avro(avroDir).select("Decimal").collect()
-      assert(decimals.map(_(0)).contains(new java.math.BigDecimal("99999999999999999999999999999999.12346")))
+      assert(decimals.map(_ (0)).contains(
+        new java.math.BigDecimal("99999999999999999999999999999999.12346")))
 
       // There should be a null entry
       val length = sqlContext.read.avro(avroDir).select("Length").collect()
-      assert(length.map(_(0)).contains(null))
+      assert(length.map(_ (0)).contains(null))
 
       val binary = sqlContext.read.avro(avroDir).select("Binary").collect()
       for (i <- arrayOfByte.indices) {
@@ -387,11 +406,12 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
            |USING com.databricks.spark.avro
            |OPTIONS (path "$episodesFile")
         """.stripMargin.replaceAll("\n", " "))
-      sqlContext.sql(s"""
-             |CREATE TEMPORARY TABLE episodesEmpty
-             |(name string, air_date string, doctor int)
-             |USING com.databricks.spark.avro
-             |OPTIONS (path "$tempEmptyDir")
+      sqlContext.sql(
+        s"""
+           |CREATE TEMPORARY TABLE episodesEmpty
+           |(name string, air_date string, doctor int)
+           |USING com.databricks.spark.avro
+           |OPTIONS (path "$tempEmptyDir")
         """.stripMargin.replaceAll("\n", " "))
 
       assert(sqlContext.sql("SELECT * FROM episodes").collect().length === 8)
@@ -420,26 +440,36 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
     }
   }
 
-  test("test for conversion from logical type to sql type") {
+  test("support writing of logical decimal data type") {
     TestUtils.withTempDir { dir =>
-      val df = sqlContext.read.avro("resources/decimalspart0.avro")
-      val build = SchemaBuilder.record("topLevelRecord").namespace("")
-      val avroSchema = SchemaConverters.convertStructToAvro(df.schema, "topLevelRecord", "")
-      //avroSchema.addProp(LogicalType.LOGICAL_TYPE_PROP, "decimal")
-      avroSchema.getLogicalType.addToSchema(avroSchema)
-      val conversion = LogicalTypeConverters.toSqlType(avroSchema.getLogicalType)
-      assert(conversion == DecimalType)
+      val testSchema = StructType(Seq(
+        StructField("decimal", DecimalType(38, 5), true)))
+
+      val cityRDD = sqlContext.sparkContext.parallelize(Seq(
+          Row(Decimal(new java.math.BigDecimal("99999999999999999999999999999999.123456"), 38, 5))))
+      val cityDataFrame = sqlContext.createDataFrame(cityRDD, testSchema)
+
+      cityDataFrame.write.avro(dir + "/avro")
+
+      val df = sqlContext.read.avro(dir + "/avro").select("decimal").collect()
+      val expectedDecimals =
+        List(new java.math.BigDecimal("99999999999999999999999999999999.12346"))
+
+      val decimals = df.map(_ (0).asInstanceOf[java.math.BigDecimal]).toList
+      assert(decimals.length == 1)
+      assert(decimals == expectedDecimals)
     }
   }
 
-  test("test for conversions from AVRO type to SQL") {
-    TestUtils.withTempDir { dir =>
-      val df = sqlContext.read.avro("resources/decimalspart0.avro")
-      val build = SchemaBuilder.record("topLevelRecord").namespace("")
-      val avroSchema = SchemaConverters.convertStructToAvro(df.schema, "topLevelRecord", "")
-      avroSchema.getLogicalType.addToSchema(avroSchema)
-      val conversion = LogicalTypeConverters.toSql(avroSchema.getLogicalType, df.schema.fields(0) ,avroSchema)
-      assert(conversion == BigDecimal)
-    }
+  test("support reading of logical decimal data type") {
+    val df = sqlContext.read.avro(logicalFile).select("decimal").collect()
+    val expectedDecimals = List(new java.math.BigDecimal("1231231313313.12333"),
+      new java.math.BigDecimal("12311123312341234123412343.12333"),
+      new java.math.BigDecimal("97654345543222.12345"),
+      new java.math.BigDecimal("1231231313313.12311"))
+
+    val decimals = df.map(_ (0).asInstanceOf[java.math.BigDecimal]).toList
+    assert(decimals.length == 4)
+    assert(decimals == expectedDecimals)
   }
 }

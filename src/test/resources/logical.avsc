@@ -2,11 +2,11 @@
   "type" : "record",
   "name" : "test_schema",
   "fields" : [{
-    "name": "decimals",
+    "name": "decimal",
     "type": {
       "logicalType": "decimal",
       "type": "bytes",
-      "precision": 32,
+      "precision": 20,
       "scale": 5
     }
   }]

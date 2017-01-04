@@ -42,8 +42,13 @@ private object SchemaConverters {
       case INT => SchemaType(IntegerType, nullable = false)
       case STRING => SchemaType(StringType, nullable = false)
       case BOOLEAN => SchemaType(BooleanType, nullable = false)
-      case BYTES => SchemaType(LogicalTypeConverters.toSqlType(avroSchema.getLogicalType).
-        getOrElse(BinaryType), nullable = false)
+      case BYTES =>
+        lazy val decimalType = LogicalTypeConverters.toSqlType(avroSchema.getLogicalType)
+        if(null != avroSchema.getLogicalType && decimalType.isDefined) {
+          SchemaType(decimalType.get, nullable = false)
+        } else {
+          SchemaType(BinaryType, nullable = false)
+        }
       case DOUBLE => SchemaType(DoubleType, nullable = false)
       case FLOAT => SchemaType(FloatType, nullable = false)
       case LONG => SchemaType(LongType, nullable = false)
@@ -182,7 +187,7 @@ private object SchemaConverters {
       case BYTES => (item: Any) => if (item == null) {
         null
       } else {
-        lazy val decimalValue = LogicalTypeConverters.toSql(schema.getLogicalType, item, schema)
+        lazy val decimalValue = LogicalTypeConverters.toSqlValue(schema.getLogicalType, item, schema)
         if(null != schema.getLogicalType && decimalValue.isDefined) {
           decimalValue.get
         } else {

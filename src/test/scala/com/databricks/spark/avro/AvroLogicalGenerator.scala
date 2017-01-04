@@ -16,6 +16,7 @@
 package com.databricks.spark.avro
 
 import java.io.File
+import java.math.BigDecimal
 
 import org.apache.avro.file.DataFileWriter
 import org.apache.avro.generic.GenericData
@@ -23,18 +24,29 @@ import org.apache.avro.io.DatumWriter
 import org.apache.avro.{Conversions, Schema}
 import org.apache.commons.io.FileUtils
 
-import scala.util.Random
+import scala.io.Source
+import net.liftweb.json._
 
 /**
-  * Created by shannonh on 13/12/2016.
+  * Class to generate avro files with logical types
+  * Currently only supports the avro schema in src/test/resources/logical.avsc
+  * any json file to map into this schema will only be supported for a single decimal field
+  * called "decimal" in the avro record
   */
 object AvroLogicalGenerator {
   val defaultNumberOfRecords = 10
   val defaultNumberOfFiles = 1
-  val outputDir = "resources/decimals"
-  val schemaPath = "src/test/resources/testdec.avsc"
+  val outputDir = "src/test/resources/logical/"
+  val schemaPath = "src/test/resources/logical.avsc"
 
-  private[avro] def generateAvroFile(numberOfRecords: Int, fileIdx: Int) = {
+  def createDecimalIterator = Iterator(new java.math.BigDecimal("12313131313131.12312"),
+    new java.math.BigDecimal("43223334323.12423"),
+    new java.math.BigDecimal("12.00000"),
+    new java.math.BigDecimal("0.12312"),
+    new java.math.BigDecimal("9088813123213332123222223334.12312"))
+
+  private[avro] def generateAvroFile(numberOfRecords: Int, fileIdx: Int)
+                                    (createDecimalIterator: () => Iterator[java.math.BigDecimal]) = {
     val schema = new Schema.Parser().parse(new File(schemaPath))
     val outputFile = new File(outputDir + "part" + fileIdx + ".avro")
 
@@ -48,14 +60,16 @@ object AvroLogicalGenerator {
 
     // Create data that we will put into the avro file
     val avroRec = new GenericData.Record(schema)
-    val decimal = schema.getField("decimals").schema()
-
-    val rand = new Random()
+    val decimal = schema.getField("decimal").schema()
 
     val conversion = new Conversions.DecimalConversion()
 
+    var decimals = createDecimalIterator()
     for (idx <- 0 until numberOfRecords) {
-      avroRec.put("decimals", conversion.toBytes(new java.math.BigDecimal("12313131313131.12312"),
+      if (!decimals.hasNext) {
+        decimals = createDecimalIterator()
+      }
+      avroRec.put("decimal", conversion.toBytes(decimals.next(),
         decimal, decimal.getLogicalType))
       dataFileWriter.append(avroRec)
     }
@@ -64,6 +78,7 @@ object AvroLogicalGenerator {
   }
 
   def main(args: Array[String]) {
+
     var numberOfRecords = defaultNumberOfRecords
     var numberOfFiles = defaultNumberOfFiles
 
@@ -75,15 +90,35 @@ object AvroLogicalGenerator {
       numberOfFiles = args(1).toInt
     }
 
-    println(s"Decimals! Generating $numberOfFiles avro files with $numberOfRecords records each")
+    println(s"Logical Types! Generating $numberOfFiles avro files with $numberOfRecords records each")
 
     FileUtils.deleteDirectory(new File(outputDir))
     new File(outputDir).mkdirs() // Create directory for output files
 
+    val createIterator = if (args.size > 2) {
+      println("Generating from Json file")
+      () => iteratorFromJson(args(2))
+    }
+    else {
+      println("Generating from code")
+      () => createDecimalIterator
+    }
+
     for (fileIdx <- 0 until numberOfFiles) {
-      generateAvroFile(numberOfRecords, fileIdx)
+      generateAvroFile(numberOfRecords, fileIdx)(createIterator)
     }
 
     println("Generation finished")
+  }
+
+  def iteratorFromJson(jsonPath: String): Iterator[java.math.BigDecimal] = {
+    implicit val formats = DefaultFormats
+
+    val source = new File(jsonPath)
+    Source.fromFile(source).getLines().map {
+      line =>
+        val decimal = (parse(line) \ "decimal").extract[String]
+        new BigDecimal(decimal)
+    }
   }
 }

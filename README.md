@@ -7,7 +7,7 @@ A library for reading and writing Avro data from [Spark SQL](http://spark.apache
 
 ## Requirements
 
-This documentation is for Spark 1.4+.
+This documentation is for Spark 1.5+.
 
 This library has different versions for Spark 1.2, 1.3, and 1.4+:
 
@@ -24,7 +24,7 @@ You can link against this library (for Spark 1.4+) in your program at the follow
 Using SBT:
 
 ```
-libraryDependenicies += "com.databricks" %% "spark-avro" % "2.0.0"
+libraryDependenicies += "com.databricks" %% "spark-avro" % "2.0.1-kainos"
 ```
 
 Using Maven:
@@ -33,7 +33,7 @@ Using Maven:
 <dependency>
     <groupId>com.databricks<groupId>
     <artifactId>spark-avro_2.10</artifactId>
-    <version>2.0.0</version>
+    <version>2.0.1-kainos</version>
 </dependency>
 ```
 

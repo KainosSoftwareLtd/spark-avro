@@ -16,7 +16,7 @@ This library has different versions for Spark 1.2, 1.3, and 1.4+:
 | `1.2`         | `0.2.0`              |
 | `1.3`         | `1.0.0`              |
 | `1.4`         | `2.0.0`              |
-| `1.8.1+`	| `kainos-2.0.1`       |
+| `1.5+`	| `kainos-2.0.1`       |
 ## Linking
 
 You can link against this library (for Spark 1.4+) in your program at the following coordinates:

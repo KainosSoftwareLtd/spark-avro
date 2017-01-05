@@ -1,0 +1,43 @@
+{
+  "type" : "record",
+  "name" : "test_schema",
+  "fields" : [{
+      "name" : "accountingamount1",
+      "type" :    [ "null", {
+      "type" : "bytes",
+      "logicalType" : "decimal",
+      "precision" : 18,
+      "scale" : 6
+    }
+    ],
+      "doc": "Transaction accounting amount"
+    },
+
+
+    {
+      "name" : "accountingamount2",
+      "type" :    [ "null", {
+      "type" : "bytes",
+      "logicalType" : "decimal",
+      "precision" : 18,
+      "scale" : 6
+    }
+    ],
+      "default" : "null",
+      "doc": "Transaction accounting amount"
+    },
+
+
+    {
+      "name" : "accountingamount3",
+      "type" :    [ "null", {
+      "type" : "bytes",
+      "logicalType" : "decimal",
+      "precision" : 18,
+      "scale" : 6
+    }
+  ],
+    "default" : 100.15,
+    "doc": "Transaction accounting amount"
+  }]
+}

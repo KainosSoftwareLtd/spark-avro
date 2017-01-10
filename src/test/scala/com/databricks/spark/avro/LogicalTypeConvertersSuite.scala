@@ -20,7 +20,9 @@ import java.math.{BigDecimal, BigInteger}
 import java.nio.ByteBuffer
 
 import org.apache.avro.{LogicalTypes, Schema}
-import org.apache.spark.sql.types.DecimalType
+import org.apache.spark.SparkContext
+import org.apache.spark.sql.{Row, SQLContext}
+import org.apache.spark.sql.types._
 import org.scalatest.FunSuite
 
 class LogicalTypeConvertersSuite extends FunSuite {
@@ -66,5 +68,32 @@ class LogicalTypeConvertersSuite extends FunSuite {
     val bytes = LogicalTypeConverters.convertToLogicalValue(decimal)
 
     assert(bytes == expectedBytes)
+  }
+
+  test("Scale and Precision change appropriately based on input values") {
+    TestUtils.withTempDir { tempDir =>
+      val precision = 9
+      val rescaledPrecision = 7
+      val scale = 2
+
+      var sqlContext = new SQLContext(new SparkContext("local[2]", "AvroSuite"))
+
+      val schema = StructType(Array(
+        StructField("Name", StringType, false),
+        StructField("DecimalType", DecimalType(precision, scale), false)))
+
+      val decimalRDD = sqlContext.sparkContext.parallelize(Seq(
+        Row("D1",Decimal(new java.math.BigDecimal("1234567.89"), precision, scale)),
+        Row("D2",Decimal(new java.math.BigDecimal("12345.6"), precision, scale))))
+
+      val decimalDataFrame = sqlContext.createDataFrame(decimalRDD, schema)
+
+      val avroDir = tempDir + "/avro"
+      decimalDataFrame.write.avro(avroDir)
+      // sqlContext.read.avro(avroDir)
+      val result = sqlContext.read.avro(avroDir).select("DecimalType").collect()
+      assert(result(0)(0).asInstanceOf[BigDecimal].precision() == precision)
+      assert(result(1)(0).asInstanceOf[BigDecimal].precision() == rescaledPrecision)
+    }
   }
 }

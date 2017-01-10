@@ -16,9 +16,10 @@
 
 package com.databricks.spark.avro
 
-import java.math.{BigDecimal, BigInteger}
+import java.math.BigDecimal
 import java.nio.ByteBuffer
 
+import org.apache.avro.Schema.Type
 import org.apache.avro.{LogicalTypes, Schema}
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.{Row, SQLContext}
@@ -26,6 +27,8 @@ import org.apache.spark.sql.types._
 import org.scalatest.FunSuite
 
 class LogicalTypeConvertersSuite extends FunSuite {
+
+  var sqlContext = new SQLContext(new SparkContext("local[2]", "AvroSuite"))
 
   test("conversions from bytes toSql value of Decimal") {
     val bigItem = new java.math.BigDecimal("4242342434222232132.123123")
@@ -76,8 +79,6 @@ class LogicalTypeConvertersSuite extends FunSuite {
       val rescaledPrecision = 7
       val scale = 2
 
-      var sqlContext = new SQLContext(new SparkContext("local[2]", "AvroSuite"))
-
       val schema = StructType(Array(
         StructField("Name", StringType, false),
         StructField("DecimalType", DecimalType(precision, scale), false)))
@@ -90,10 +91,15 @@ class LogicalTypeConvertersSuite extends FunSuite {
 
       val avroDir = tempDir + "/avro"
       decimalDataFrame.write.avro(avroDir)
-      // sqlContext.read.avro(avroDir)
       val result = sqlContext.read.avro(avroDir).select("DecimalType").collect()
       assert(result(0)(0).asInstanceOf[BigDecimal].precision() == precision)
       assert(result(1)(0).asInstanceOf[BigDecimal].precision() == rescaledPrecision)
+    }
+  }
+
+  test("Test for Union Type with at A Decimal") {
+    TestUtils.withTempDir { tempDir =>
+
     }
   }
 }

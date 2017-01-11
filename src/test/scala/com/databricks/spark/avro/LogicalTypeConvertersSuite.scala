@@ -75,30 +75,37 @@ class LogicalTypeConvertersSuite extends FunSuite {
 
   test("Scale and Precision change appropriately based on input values") {
     TestUtils.withTempDir { tempDir =>
-      val precision = 9
-      val rescaledPrecision = 7
-      val scale = 2
 
       val schema = StructType(Array(
         StructField("Name", StringType, false),
-        StructField("DecimalType", DecimalType(precision, scale), false)))
+        StructField("DecimalType", DecimalType(9, 2), false)))
 
       val decimalRDD = sqlContext.sparkContext.parallelize(Seq(
-        Row("D1",Decimal(new java.math.BigDecimal("1234567.89"), precision, scale)),
-        Row("D2",Decimal(new java.math.BigDecimal("12345.6"), precision, scale))))
+        Row("D1",Decimal(new java.math.BigDecimal("1234567.89"), 9, 2)),
+        Row("D2",Decimal(new java.math.BigDecimal("12345.6"), 9, 2)),
+        Row("D3",Decimal(new java.math.BigDecimal("1234567.891"), 9, 2))))
 
       val decimalDataFrame = sqlContext.createDataFrame(decimalRDD, schema)
 
       val avroDir = tempDir + "/avro"
       decimalDataFrame.write.avro(avroDir)
       val result = sqlContext.read.avro(avroDir).select("DecimalType").collect()
-      assert(result(0)(0).asInstanceOf[BigDecimal].precision() == precision)
-      assert(result(1)(0).asInstanceOf[BigDecimal].precision() == rescaledPrecision)
-    }
-  }
 
-  test("Test for Union Type with at A Decimal") {
-    TestUtils.withTempDir { tempDir =>
+      val valueEquivelences = result.map(row =>
+        row(0).asInstanceOf[BigDecimal].toEngineeringString match {
+          case "1234567.89" => true
+          case "12345.60" => true
+          case _ => false
+        }
+      )
+
+      assert (
+        if(valueEquivelences.contains(false)) {
+          false
+        } else {
+          true
+        }
+      )
 
     }
   }

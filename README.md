@@ -16,7 +16,15 @@ This library has different versions for Spark 1.2, 1.3, and 1.4+:
 | `1.2`         | `0.2.0`              |
 | `1.3`         | `1.0.0`              |
 | `1.4`         | `2.0.0`              |
-| `1.5+`	| `kainos-2.0.1`       |
+| `1.5+`        | `2.0.1`              |
+
+For added Logical Type support the following versions should be used:
+
+| Spark Version | `spark-avro` version |
+| ------------- |----------------------|
+| `1.4`         | `2.0.1-kainos`       |
+| `1.5+`        | `2.0.1-kainos`       |
+
 ## Linking
 
 You can link against this library (for Spark 1.4+) in your program at the following coordinates:
@@ -24,7 +32,7 @@ You can link against this library (for Spark 1.4+) in your program at the follow
 Using SBT:
 
 ```
-libraryDependenicies += "com.databricks" %% "spark-avro" % "2.0.1-kainos"
+libraryDependenicies += "com.databricks" %% "spark-avro" % "2.0.1"
 ```
 
 Using Maven:
@@ -33,7 +41,7 @@ Using Maven:
 <dependency>
     <groupId>com.databricks<groupId>
     <artifactId>spark-avro_2.10</artifactId>
-    <version>2.0.1-kainos</version>
+    <version>2.0.1</version>
 </dependency>
 ```
 
@@ -49,6 +57,39 @@ The `--packages` argument can also be used with `bin/spark-submit`.
 
 This library is cross-published for Scala 2.11, so 2.11 users should replace 2.10 with 2.11 in the commands listed above.
 
+### Logical Type support
+Versions with Logical Type support are not currently available through Maven Central or Sonatype. The following coordinates should be added to get versions supporting Logical Types:
+
+```
+resolvers += "jitpack" at "https://jitpack.io"
+libraryDependenicies += "com.github.KainosSoftwareLtd" %% "spark-avro" % "v2.0.1-kainos"
+```
+
+Using Maven:
+
+```xml
+<repositories>
+  <repository>
+    <id>jitpack.io</id>
+    <url>https://jitpack.io</url>
+  </repository>
+</repositories>
+```
+Then
+
+```xml
+<dependency>
+    <groupId>com.github.KainosSoftwareLtd<groupId>
+    <artifactId>spark-avro_2.10</artifactId>
+    <version>2.0.1-kainos</version>
+</dependency>
+```
+
+Using `spark-shell` or `spark-submit`:
+```
+$ bin/spark-shell --repositories https://jitpack.io --packages com.github.KainosSoftwareLtd:spark-avro_2.10:2.0.1-kainos
+```
+
 ## Features
 
 `spark-avro` supports reading and writing of Avro data from Spark SQL.
@@ -59,6 +100,7 @@ witout any extra configuration. Just pass the columns you want to partition on, 
 - **Compression:**  You can specify the type of compression to use when writing Avro out to
 disk. The supported types are `uncompressed`, `snappy`, and `deflate`. You can also specify the deflate level.
 - **Specifying record names:** You can specify the record name and namespace to use by passing a map of parameters with `recordName` and `recordNamespace`.
+- **Logical type** conversions in line with [Avro 1.7.7](http://avro.apache.org/docs/1.7.7/spec.html#Logical+Types)
 
 ## Supported types for Avro -> Spark SQL conversion
 
@@ -79,6 +121,10 @@ disk. The supported types are `uncompressed`, `snappy`, and `deflate`. You can a
 | map       | MapType        |
 | fixed     | BinaryType     |
 
+| Avro logical type | Spark SQL type |
+| ----------------- |----------------|
+| decimal           | DecimalType    |
+
 In addition to the types listed above, `spark-avro` supports reading of three types of `union` types:
 
 1. `union(int, long)`
@@ -91,14 +137,18 @@ At the moment, `spark-avro` ignores docs, aliases and other properties present i
 
 `spark-avro` supports writing of all Spark SQL types into Avro. For most types, the mapping from Spark types to Avro types is straightforward (e.g. IntegerType gets converted to int); however, there are a few special cases which are listed below:
 
-| Spark SQL type | Avro type | LogicalType | 
-| ---------------|-----------|--------------
-| ByteType       | int       |		   |
-| ShortType      | int       |		   |
-| DecimalType    | bytes     | decimal	   |
-| BinaryType     | bytes     |		   |
-| TimestampType  | long      |		   |
-| StructType     | record    |		   |	
+| Spark SQL type | Avro type |
+| ---------------|-----------|
+| ByteType       | int       |
+| ShortType      | int       |
+| DecimalType    | bytes     |
+| BinaryType     | bytes     |
+| TimestampType  | long      |
+| StructType     | record    |
+
+| Spark SQL type | Avro logical type |
+| ---------------|-------------------|
+| DecimalType    | decimal           |
 
 ## Examples
 
@@ -112,7 +162,7 @@ These examples use an Avro file available for download
 ```scala
 // import needed for the .avro method to be added
 import com.databricks.spark.avro._
-		
+
 val sqlContext = new SQLContext(sc)
 
 // The Avro records get converted to Spark types, filtered, and
@@ -128,7 +178,7 @@ val sqlContext = new SQLContext(sc)
 val df = sqlContext.read
 	.format("com.databricks.spark.avro")
 	.load("src/test/resources/episodes.avro")
-	
+
 df.filter("doctor > 5").write
 	.format("com.databricks.spark.avro")
 	.save("/tmp/output")

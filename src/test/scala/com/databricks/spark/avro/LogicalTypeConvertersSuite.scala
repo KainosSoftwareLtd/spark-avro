@@ -58,10 +58,10 @@ class LogicalTypeConvertersSuite extends FunSuite {
   }
 
   test("conversions from Spark SQL DecimalType to Avro Decimal type") {
-    val schema = LogicalTypeConverters.convertDataTypeToLogical(DecimalType(5,2))
+    val schema = LogicalTypeConverters.convertDataTypeToLogical(DecimalType(5, 2))
 
     assert(schema.getType == Schema.Type.BYTES)
-    assert(schema.getLogicalType == LogicalTypes.decimal(5,2))
+    assert(schema.getLogicalType == LogicalTypes.decimal(5, 2))
   }
 
   test("conversions from BigDecimal values to Avro Bytes") {
@@ -75,15 +75,14 @@ class LogicalTypeConvertersSuite extends FunSuite {
 
   test("Scale and Precision change appropriately based on input values") {
     TestUtils.withTempDir { tempDir =>
-
       val schema = StructType(Array(
         StructField("Name", StringType, false),
         StructField("DecimalType", DecimalType(9, 2), false)))
 
       val decimalRDD = sqlContext.sparkContext.parallelize(Seq(
-        Row("D1",Decimal(new java.math.BigDecimal("1234567.89"), 9, 2)),
-        Row("D2",Decimal(new java.math.BigDecimal("12345.6"), 9, 2)),
-        Row("D3",Decimal(new java.math.BigDecimal("1234567.891"), 9, 2))))
+        Row("D1", Decimal(new java.math.BigDecimal("1234567.89"), 9, 2)),
+        Row("D2", Decimal(new java.math.BigDecimal("12345.6"), 9, 2)),
+        Row("D3", Decimal(new java.math.BigDecimal("1234567.891"), 9, 2))))
 
       val decimalDataFrame = sqlContext.createDataFrame(decimalRDD, schema)
 
@@ -99,14 +98,13 @@ class LogicalTypeConvertersSuite extends FunSuite {
         }
       )
 
-      assert (
-        if(valueEquivelences.contains(false)) {
+      assert(
+        if (valueEquivelences.contains(false)) {
           false
         } else {
           true
         }
       )
-
     }
   }
 }

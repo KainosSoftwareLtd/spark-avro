@@ -83,7 +83,6 @@ class LogicalTypeConvertersSuite extends FunSuite {
         Row("D1", Decimal(new java.math.BigDecimal("1234567.89"), 9, 2)),
         Row("D2", Decimal(new java.math.BigDecimal("12345.6"), 9, 2)),
         Row("D3", Decimal(new java.math.BigDecimal("1234567.891"), 9, 2))))
-
       val decimalDataFrame = sqlContext.createDataFrame(decimalRDD, schema)
 
       val avroDir = tempDir + "/avro"

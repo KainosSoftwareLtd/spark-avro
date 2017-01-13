@@ -37,6 +37,7 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
   val episodesFile = "src/test/resources/episodes.avro"
   val testFile = "src/test/resources/test.avro"
   val logicalFile = "src/test/resources/logical.avro"
+  val logicalUnionFile = "src/test/resources/union-type-decimal.avro"
 
   private var sqlContext: SQLContext = _
 
@@ -484,5 +485,17 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
     } else {
       assert(decimals == expectedDecimals)
     }
+  }
+
+  test("support for decimal within union types") {
+    val df = sqlContext.read.avro(logicalUnionFile).collect()
+
+    val expectedOutput = List(
+      Array(new java.math.BigDecimal("1231231313313.12311"), null),
+      Array(null, new java.math.BigDecimal("97654345543222.12345"))
+    )
+
+    val unions = df.map(_ (0)).toList
+    print(unions)
   }
 }

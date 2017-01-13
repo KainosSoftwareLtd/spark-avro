@@ -1,0 +1,14 @@
+{
+  "type" : "record",
+  "name" : "unionlogicaltypeunion",
+  "fields" : [{
+    "name":"decimalunion",
+      "type" : [
+      {
+          "type" : "bytes",
+          "logicalType" : "decimal",
+          "precision" : 18,
+          "scale" : 6
+      }, "int", "null"]
+  }]
+}

@@ -16,14 +16,19 @@
 
 package com.databricks.spark.avro
 
-import java.math.{BigDecimal, BigInteger}
+import java.math.BigDecimal
 import java.nio.ByteBuffer
 
+import org.apache.avro.Schema.Type
 import org.apache.avro.{LogicalTypes, Schema}
-import org.apache.spark.sql.types.DecimalType
+import org.apache.spark.SparkContext
+import org.apache.spark.sql.{Row, SQLContext}
+import org.apache.spark.sql.types._
 import org.scalatest.FunSuite
 
 class LogicalTypeConvertersSuite extends FunSuite {
+
+  var sqlContext = new SQLContext(new SparkContext("local[2]", "AvroSuite"))
 
   test("conversions from bytes toSql value of Decimal") {
     val bigItem = new java.math.BigDecimal("4242342434222232132.123123")
@@ -53,10 +58,10 @@ class LogicalTypeConvertersSuite extends FunSuite {
   }
 
   test("conversions from Spark SQL DecimalType to Avro Decimal type") {
-    val schema = LogicalTypeConverters.convertDataTypeToLogical(DecimalType(5,2))
+    val schema = LogicalTypeConverters.convertDataTypeToLogical(DecimalType(5, 2))
 
     assert(schema.getType == Schema.Type.BYTES)
-    assert(schema.getLogicalType == LogicalTypes.decimal(5,2))
+    assert(schema.getLogicalType == LogicalTypes.decimal(5, 2))
   }
 
   test("conversions from BigDecimal values to Avro Bytes") {
@@ -66,5 +71,39 @@ class LogicalTypeConvertersSuite extends FunSuite {
     val bytes = LogicalTypeConverters.convertToLogicalValue(decimal)
 
     assert(bytes == expectedBytes)
+  }
+
+  test("Scale and Precision change appropriately based on input values") {
+    TestUtils.withTempDir { tempDir =>
+      val schema = StructType(Array(
+        StructField("Name", StringType, false),
+        StructField("DecimalType", DecimalType(9, 2), false)))
+
+      val decimalRDD = sqlContext.sparkContext.parallelize(Seq(
+        Row("D1", Decimal(new java.math.BigDecimal("1234567.89"), 9, 2)),
+        Row("D2", Decimal(new java.math.BigDecimal("12345.6"), 9, 2)),
+        Row("D3", Decimal(new java.math.BigDecimal("1234567.891"), 9, 2))))
+      val decimalDataFrame = sqlContext.createDataFrame(decimalRDD, schema)
+
+      val avroDir = tempDir + "/avro"
+      decimalDataFrame.write.avro(avroDir)
+      val result = sqlContext.read.avro(avroDir).select("DecimalType").collect()
+
+      val valueEquivelences = result.map(row =>
+        row(0).asInstanceOf[BigDecimal].toEngineeringString match {
+          case "1234567.89" => true
+          case "12345.60" => true
+          case _ => false
+        }
+      )
+
+      assert(
+        if (valueEquivelences.contains(false)) {
+          false
+        } else {
+          true
+        }
+      )
+    }
   }
 }

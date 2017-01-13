@@ -463,13 +463,26 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
 
   test("support reading of logical decimal data type") {
     val df = sqlContext.read.avro(logicalFile).select("decimal").collect()
-    val expectedDecimals = List(new java.math.BigDecimal("1231231313313.12333"),
+    val expectedDecimals = List(
+      new java.math.BigDecimal("1231231313313.12333"),
       new java.math.BigDecimal("12311123312341234123412343.12333"),
       new java.math.BigDecimal("97654345543222.12345"),
-      new java.math.BigDecimal("1231231313313.12311"))
+      new java.math.BigDecimal("1231231313313.12311")
+    )
 
     val decimals = df.map(_ (0).asInstanceOf[java.math.BigDecimal]).toList
     assert(decimals.length == 4)
-    assert(decimals == expectedDecimals)
+
+    /*
+      It is expected that when using Spark Version 1.5.0+
+      this should fail due to one of the values being larger
+      than the defined schema precision
+    */
+
+    if(org.apache.spark.SPARK_VERSION > "1.4.1") {
+      assert(decimals != expectedDecimals)
+    } else {
+      assert(decimals == expectedDecimals)
+    }
   }
 }

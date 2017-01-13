@@ -98,7 +98,8 @@ private object SchemaConverters {
   }
 
   /**
-  * This function converts sparkSQL StructType into avro schema. This method uses the convertFieldType
+  * This function converts sparkSQL StructType into avro schema.
+  * This method uses the convertFieldType
   * converter method in order to do the conversion.
   */
   private[avro] def convertStructToAvro(structType: StructType,
@@ -187,7 +188,12 @@ private object SchemaConverters {
       case BYTES => (item: Any) => if (item == null) {
         null
       } else {
-        lazy val decimalValue = LogicalTypeConverters.toSqlValue(schema.getLogicalType, item, schema)
+        lazy val decimalValue = LogicalTypeConverters.
+          toSqlValue(
+            schema.getLogicalType,
+            item,
+            schema
+          )
         if(null != schema.getLogicalType && decimalValue.isDefined) {
           decimalValue.get
         } else {

@@ -18,14 +18,14 @@ package com.databricks.spark.avro
 import java.io.File
 import java.math.BigDecimal
 
+import net.liftweb.json._
 import org.apache.avro.file.DataFileWriter
-import org.apache.avro.generic.GenericData
+import org.apache.avro.generic.{GenericData, GenericRecordBuilder}
 import org.apache.avro.io.DatumWriter
 import org.apache.avro.{Conversions, Schema}
 import org.apache.commons.io.FileUtils
 
 import scala.io.Source
-import net.liftweb.json._
 
 /**
   * Class to generate avro files with logical types
@@ -79,6 +79,8 @@ object AvroLogicalGenerator {
 
   def main(args: Array[String]) {
 
+    writeUnionDecimalTestFile()
+
     var numberOfRecords = defaultNumberOfRecords
     var numberOfFiles = defaultNumberOfFiles
 
@@ -121,4 +123,58 @@ object AvroLogicalGenerator {
         new BigDecimal(decimal)
     }
   }
+
+  def writeUnionDecimalTestFile(): Unit = {
+    val schema = new Schema.Parser().
+      parse(new File("src/test/resources/union-type-decimal.avsc"))
+    val outputFile = new File("src/test/resources/union-type-decimal.avro")
+
+    val genericData = new GenericData()
+    genericData.addLogicalTypeConversion(new Conversions.DecimalConversion())
+    val datumWriter = genericData.createDatumWriter(schema)
+    val dataFileWriter =
+      new DataFileWriter[GenericData.Record](
+        datumWriter.asInstanceOf[DatumWriter[GenericData.Record]])
+    dataFileWriter.create(schema, outputFile)
+
+    val conversion = new Conversions.DecimalConversion()
+
+    val defaultDecimal = schema.getField("default_decimal").schema()
+    val defaultNull = schema.getField("default_null").schema()
+    val noDefault = schema.getField("optional_no_default").schema()
+
+    var builder = new GenericRecordBuilder(schema)
+    builder.set("scenario", "default, default, null")
+    builder.set("optional_no_default", null)
+    dataFileWriter.append(builder.build())
+
+    builder = new GenericRecordBuilder(schema)
+    builder.set("scenario", "set, default, null")
+    builder.set("default_decimal", conversion.toBytes(
+      new BigDecimal("123123.12"),
+      defaultDecimal,
+      defaultDecimal.getTypes.get(0).getLogicalType))
+    builder.set("optional_no_default", null)
+    dataFileWriter.append(builder.build())
+
+    builder = new GenericRecordBuilder(schema)
+    builder.set("scenario", "default, set, null")
+    builder.set("default_null", conversion.toBytes(
+      new BigDecimal("123123.12"),
+      defaultNull,
+      defaultNull.getTypes.get(1).getLogicalType))
+    builder.set("optional_no_default", null)
+    dataFileWriter.append(builder.build())
+
+    builder = new GenericRecordBuilder(schema)
+    builder.set("scenario", "default, default, set")
+    builder.set("optional_no_default", conversion.toBytes(
+      new BigDecimal("123123.12"),
+      noDefault,
+      noDefault.getTypes.get(1).getLogicalType))
+    dataFileWriter.append(builder.build())
+
+    dataFileWriter.close()
+  }
+
 }

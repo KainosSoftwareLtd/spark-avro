@@ -1,0 +1,48 @@
+{
+  "type": "record",
+  "name": "unionlogicaltypeunion",
+  "fields": [
+    {
+      "name": "scenario",
+      "type": "string"
+    },
+    {
+      "name": "default_decimal",
+      "type": [
+        {
+          "type": "bytes",
+          "logicalType": "decimal",
+          "precision": 18,
+          "scale": 2
+        },
+        "null"
+      ],
+      "default": "'\u0010"
+    },
+    {
+      "name": "default_null",
+      "type": [
+        "null",
+        {
+          "type": "bytes",
+          "logicalType": "decimal",
+          "precision": 18,
+          "scale": 2
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "optional_no_default",
+      "type": [
+        "null",
+        {
+          "type": "bytes",
+          "logicalType": "decimal",
+          "precision": 18,
+          "scale": 2
+        }
+      ]
+    }
+  ]
+}

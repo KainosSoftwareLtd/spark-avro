@@ -464,7 +464,7 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
 
   test("reading logical decimal data type") {
     val df = sqlContext.read.avro(logicalFile).select("decimal").collect()
-    val expectedDecimals = List(
+    var expectedDecimals = List(
       new java.math.BigDecimal("1231231313313.12333"),
       new java.math.BigDecimal("12311123312341234123412343.12333"),
       new java.math.BigDecimal("97654345543222.12345"),
@@ -475,16 +475,21 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
     assert(decimals.length == 4)
 
     /*
-      It is expected that when using Spark Version 1.5.0+
-      this should fail due to one of the values being larger
-      than the defined schema precision
+      The avro schema defines the precision as 20 and the value written has precision of 32.
+      Spark 1.5.0+ will attempt to change the precision to be smaller and result in a null value
+      being assigned to the field.
     */
 
     if(org.apache.spark.SPARK_VERSION > "1.4.1") {
-      assert(decimals != expectedDecimals)
-    } else {
-      assert(decimals == expectedDecimals)
+      expectedDecimals = List(
+        new java.math.BigDecimal("1231231313313.12333"),
+        null,
+        new java.math.BigDecimal("97654345543222.12345"),
+        new java.math.BigDecimal("1231231313313.12311")
+      )
     }
+
+    assert(decimals == expectedDecimals)
   }
 
   test("reading optional decimal data type with default value") {

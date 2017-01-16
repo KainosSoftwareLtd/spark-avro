@@ -441,7 +441,7 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
     }
   }
 
-  test("support writing of logical decimal data type") {
+  test("writing logical decimal data type") {
     TestUtils.withTempDir { dir =>
       val testSchema = StructType(Seq(
         StructField("decimal", DecimalType(38, 5), true)))
@@ -462,7 +462,7 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
     }
   }
 
-  test("support reading of logical decimal data type") {
+  test("reading logical decimal data type") {
     val df = sqlContext.read.avro(logicalFile).select("decimal").collect()
     val expectedDecimals = List(
       new java.math.BigDecimal("1231231313313.12333"),
@@ -487,15 +487,59 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
     }
   }
 
-  test("support for decimal within union types") {
-    val df = sqlContext.read.avro(logicalUnionFile).collect()
+  test("reading optional decimal data type with default value") {
+    val df = sqlContext.read.avro(logicalUnionFile)
+    val decimals = df.where(df("scenario").equalTo("default, default, null"))
+      .select("default_decimal").collect()
+      .map(_ (0)).map(_.asInstanceOf[java.math.BigDecimal]).toList
 
     val expectedOutput = List(
-      Array(new java.math.BigDecimal("1231231313313.12311"), null),
-      Array(null, new java.math.BigDecimal("97654345543222.12345"))
+      new java.math.BigDecimal("100.00")
     )
 
-    val unions = df.map(_ (0)).toList
-    print(unions)
+    assert(decimals == expectedOutput)
+  }
+
+  test("reading optional decimal data type with value set") {
+    val df = sqlContext.read.avro(logicalUnionFile)
+    val decimals = df.where(df("scenario").like("%default, null"))
+      .select("default_decimal").collect()
+      .map(_ (0)).map(_.asInstanceOf[java.math.BigDecimal]).toList
+
+    val expectedOutput = List(
+      new java.math.BigDecimal("100.00"),
+      new java.math.BigDecimal("123123.12")
+    )
+
+    assert(decimals == expectedOutput)
+  }
+
+  test("reading optional decimal data type with null as the default") {
+    val df = sqlContext.read.avro(logicalUnionFile)
+    val decimals = df.where(df("scenario").like("default,%").and(df("scenario").like("%null")))
+      .select("default_null").collect()
+      .map(_ (0)).map(_.asInstanceOf[java.math.BigDecimal]).toList
+
+    val expectedOutput = List(
+      null,
+      new java.math.BigDecimal("123123.12")
+    )
+
+    assert(decimals == expectedOutput)
+  }
+
+
+  test("reading optional decimal data type with no default value") {
+    val df = sqlContext.read.avro(logicalUnionFile)
+    val decimals = df.where(df("scenario").like("default, default%"))
+      .select("optional_no_default").collect()
+      .map(_ (0)).map(_.asInstanceOf[java.math.BigDecimal]).toList
+
+    val expectedOutput = List(
+      null,
+      new java.math.BigDecimal("123123.12")
+    )
+
+    assert(decimals == expectedOutput)
   }
 }

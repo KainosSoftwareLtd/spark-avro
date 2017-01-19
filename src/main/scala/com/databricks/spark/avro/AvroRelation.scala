@@ -220,7 +220,7 @@ private[avro] class AvroRelation(
       (if (hadoopConfiguration.getBoolean(IgnoreFilesWithoutExtensionProperty, true)) {
         statuses.find(_.getName.endsWith("avro"))
       } else {
-        statuses.headOption
+        statuses.find(status => !status.getName.startsWith("_") && !status.getName.startsWith("."))
       }).getOrElse(throw new FileNotFoundException(s"No avro files present at ${path.toString}"))
 
     val reader = DataFileReader.openReader(new FsInput(singleFile, hadoopConfiguration),

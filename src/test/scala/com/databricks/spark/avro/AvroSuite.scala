@@ -547,4 +547,16 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
 
     assert(decimals == expectedOutput)
   }
+
+  test("ignores hidden files when avro.mapred.ignore.inputs.without.extension is true") {
+    sqlContext.sparkContext.hadoopConfiguration.set("avro.mapred.ignore.inputs.without.extension", "true")
+    val rows = sqlContext.read.avro("src/test/resources/test-hidden").collect()
+    assert(rows.length == 3)
+  }
+
+  test("ignores hidden files when avro.mapred.ignore.inputs.without.extension is false") {
+    sqlContext.sparkContext.hadoopConfiguration.set("avro.mapred.ignore.inputs.without.extension", "false")
+    val rows = sqlContext.read.avro("src/test/resources/test-hidden").collect()
+    assert(rows.length == 6)
+  }
 }

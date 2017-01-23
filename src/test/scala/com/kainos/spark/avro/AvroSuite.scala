@@ -26,7 +26,7 @@ import org.apache.avro.file.DataFileWriter
 import org.apache.avro.generic.{GenericData, GenericDatumWriter, GenericRecord}
 import org.apache.avro.{Schema, SchemaBuilder}
 import org.apache.commons.io.FileUtils
-import org.apache.spark.SparkContext
+import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Row, SQLContext}
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
@@ -40,10 +40,14 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
   val logicalUnionFile = "src/test/resources/union-type-decimal.avro"
 
   private var sqlContext: SQLContext = _
+  private var sparkConf: SparkConf = _
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    sqlContext = new SQLContext(new SparkContext("local[2]", "AvroSuite"))
+    sparkConf = new SparkConf().set("spark.driver.allowMultipleContexts", "true")
+      .setAppName("AvroSuite")
+      .setMaster("local[2]")
+    sqlContext = new SQLContext(new SparkContext(sparkConf))
   }
 
   override protected def afterAll(): Unit = {

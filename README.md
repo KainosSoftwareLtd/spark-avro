@@ -58,11 +58,18 @@ The `--packages` argument can also be used with `bin/spark-submit`.
 This library is cross-published for Scala 2.11, so 2.11 users should replace 2.10 with 2.11 in the commands listed above.
 
 ### Logical Type support
-Versions with Logical Type support are not currently available through Maven Central or Sonatype. The following coordinates should be added to get versions supporting Logical Types:
+Versions with Logical Type support are not currently available through Maven Central or Sonatype. 
+
+**Version `2.0.1-kainos` currently requires the use of `import com.kainos.spark.avro._` instead of `import com.databricks.spark.avro_` to access the spark-avro read and write implicits.** 
+
+Any further reference to `com.databricks.spark.avro` should be replaced with `com.kainos.spark.avro` when using version `2.0.1-kainos`.
+
+
+The following coordinates should be added to get versions supporting Logical Types:
 
 ```
 resolvers += "jitpack" at "https://jitpack.io"
-libraryDependenicies += "com.github.KainosSoftwareLtd" %% "spark-avro" % "v2.0.1-kainos"
+libraryDependenicies += "com.github.KainosSoftwareLtd" %% "spark-avro" % "2.0.1-kainos"
 ```
 
 Using Maven:

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.databricks.spark
+package com.kainos.spark
 
 import org.apache.spark.sql.{SQLContext, DataFrameReader, DataFrameWriter, DataFrame}
 
@@ -34,7 +34,7 @@ package object avro {
    * the DataFileWriter
    */
   implicit class AvroDataFrameWriter(writer: DataFrameWriter) {
-    def avro: String => Unit = writer.format("com.databricks.spark.avro").save
+    def avro: String => Unit = writer.format("com.kainos.spark.avro").save
   }
 
   /**
@@ -42,6 +42,6 @@ package object avro {
    * the DataFileReade
    */
   implicit class AvroDataFrameReader(reader: DataFrameReader) {
-    def avro: String => DataFrame = reader.format("com.databricks.spark.avro").load
+    def avro: String => DataFrame = reader.format("com.kainos.spark.avro").load
   }
 }

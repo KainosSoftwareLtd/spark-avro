@@ -21,14 +21,13 @@ import java.nio.ByteBuffer
 import java.sql.Timestamp
 import java.util.UUID
 
+import org.apache.avro.Schema
 import org.apache.avro.Schema.{Field, Type}
 import org.apache.avro.file.DataFileWriter
 import org.apache.avro.generic.{GenericData, GenericDatumWriter, GenericRecord}
-import org.apache.avro.{Schema, SchemaBuilder}
 import org.apache.commons.io.FileUtils
-import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Row, SQLContext}
+import org.apache.spark.sql.types._
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
 import scala.collection.JavaConversions._
@@ -39,24 +38,7 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
   val logicalFile = "src/test/resources/logical.avro"
   val logicalUnionFile = "src/test/resources/union-type-decimal.avro"
 
-  private var sqlContext: SQLContext = _
-  private var sparkConf: SparkConf = _
-
-  override protected def beforeAll(): Unit = {
-    super.beforeAll()
-    sparkConf = new SparkConf().set("spark.driver.allowMultipleContexts", "true")
-      .setAppName("AvroSuite")
-      .setMaster("local[2]")
-    sqlContext = new SQLContext(new SparkContext(sparkConf))
-  }
-
-  override protected def afterAll(): Unit = {
-    try {
-      sqlContext.sparkContext.stop()
-    } finally {
-      super.afterAll()
-    }
-  }
+  def sqlContext: SQLContext = TestContexts.sqlContext
 
   test("reading and writing partitioned data") {
     val df = sqlContext.read.avro(episodesFile)
@@ -451,7 +433,7 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
         StructField("decimal", DecimalType(38, 5), true)))
 
       val cityRDD = sqlContext.sparkContext.parallelize(Seq(
-          Row(Decimal(new java.math.BigDecimal("99999999999999999999999999999999.123456"), 38, 5))))
+        Row(Decimal(new java.math.BigDecimal("99999999999999999999999999999999.123456"), 38, 5))))
       val cityDataFrame = sqlContext.createDataFrame(cityRDD, testSchema)
 
       cityDataFrame.write.avro(dir + "/avro")
@@ -484,7 +466,7 @@ class AvroSuite extends FunSuite with BeforeAndAfterAll {
       being assigned to the field.
     */
 
-    if(org.apache.spark.SPARK_VERSION > "1.4.1") {
+    if (org.apache.spark.SPARK_VERSION > "1.4.1") {
       expectedDecimals = List(
         new java.math.BigDecimal("1231231313313.12333"),
         null,

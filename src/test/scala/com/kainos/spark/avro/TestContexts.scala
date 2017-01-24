@@ -14,18 +14,22 @@
  * limitations under the License.
  */
 
-package com.databricks.spark.avro
+package com.kainos.spark.avro
 
+import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.SQLContext
-import org.apache.spark.sql.sources.{HadoopFsRelation, HadoopFsRelationProvider}
-import org.apache.spark.sql.types.StructType
 
-private[avro] class DefaultSource extends HadoopFsRelationProvider {
+/**
+  * Provides the spark SQL context to be shared by all test cases.
+  */
+object TestContexts {
 
-  def createRelation(sqlContext: SQLContext,
-      paths: Array[String],
-      dataSchema: Option[StructType],
-      partitionColumns: Option[StructType],
-      parameters: Map[String, String]): HadoopFsRelation =
-    new AvroRelation(paths, dataSchema, partitionColumns, parameters)(sqlContext)
+  private val _sqlC: SQLContext = new SQLContext(
+    new SparkContext(
+    new SparkConf()
+      .setMaster("local[2]")
+      .setAppName(this.getClass.getSimpleName)))
+  _sqlC.sparkContext.setLogLevel("OFF")
+
+  def sqlContext: SQLContext = _sqlC
 }

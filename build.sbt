@@ -1,6 +1,6 @@
 name := "spark-avro"
 
-organization := "com.databricks"
+organization := "com.kainos"
 
 scalaVersion := "2.10.5"
 
@@ -26,9 +26,14 @@ spIgnoreProvided := true
 
 sparkComponents := Seq("sql")
 
+resolvers += "Cloudera repo" at "https://repository.cloudera.com/artifactory/cloudera-repos/"
+
 libraryDependencies ++= Seq(
-  "org.apache.avro" % "avro" % "1.8.1" exclude("org.mortbay.jetty", "servlet-api"),
-  "org.apache.avro" % "avro-mapred" % "1.7.7"  % "provided" classifier("hadoop2") exclude("org.mortbay.jetty", "servlet-api"),
+  "org.apache.avro" % "avro" % "1.7.6-cdh5.7.4" exclude("org.mortbay.jetty", "servlet-api"),
+  "org.apache.avro" % "avro-mapred" % "1.7.7"  % "provided"
+    classifier("hadoop2")
+    exclude("org.mortbay.jetty", "servlet-api")
+    exclude("org.apache.avro", "avro"),
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "commons-io" % "commons-io" % "2.4" % "test",
   "net.liftweb" %% "lift-json" % "2.6"
@@ -38,7 +43,7 @@ libraryDependencies ++= Seq(
   "org.apache.hadoop" % "hadoop-client" % testHadoopVersion.value % "test",
   "org.apache.spark" %% "spark-core" % testSparkVersion.value % "test" exclude("org.apache.hadoop", "hadoop-client"),
   "org.apache.spark" %% "spark-sql" % testSparkVersion.value % "test" exclude("org.apache.hadoop", "hadoop-client")
-)
+).map(_.exclude("org.apache.avro", "avro"))
 
 // Display full-length stacktraces from ScalaTest:
 testOptions in Test += Tests.Argument("-oF")

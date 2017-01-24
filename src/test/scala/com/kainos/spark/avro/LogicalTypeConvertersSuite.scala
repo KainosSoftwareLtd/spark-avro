@@ -14,21 +14,19 @@
  * limitations under the License.
  */
 
-package com.databricks.spark.avro
+package com.kainos.spark.avro
 
 import java.math.BigDecimal
 import java.nio.ByteBuffer
 
-import org.apache.avro.Schema.Type
 import org.apache.avro.{LogicalTypes, Schema}
-import org.apache.spark.SparkContext
 import org.apache.spark.sql.{Row, SQLContext}
 import org.apache.spark.sql.types._
-import org.scalatest.FunSuite
+import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
-class LogicalTypeConvertersSuite extends FunSuite {
+class LogicalTypeConvertersSuite extends FunSuite with BeforeAndAfterAll {
 
-  var sqlContext = new SQLContext(new SparkContext("local[2]", "AvroSuite"))
+  def sqlContext: SQLContext = TestContexts.sqlContext
 
   test("conversions from bytes toSql value of Decimal") {
     val bigItem = new java.math.BigDecimal("4242342434222232132.123123")

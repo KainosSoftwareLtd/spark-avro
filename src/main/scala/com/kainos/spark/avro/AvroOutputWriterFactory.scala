@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.databricks.spark.avro
+package com.kainos.spark.avro
 
 import org.apache.hadoop.mapreduce.TaskAttemptContext
 import org.apache.spark.sql.sources.{OutputWriter, OutputWriterFactory}

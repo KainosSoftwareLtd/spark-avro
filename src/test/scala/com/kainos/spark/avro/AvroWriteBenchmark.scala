@@ -1,4 +1,4 @@
-package com.databricks.spark.avro
+package com.kainos.spark.avro
 
 import java.util.concurrent.TimeUnit
 

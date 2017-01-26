@@ -2,8 +2,8 @@
 
 A library for reading and writing Avro data from [Spark SQL](http://spark.apache.org/docs/latest/sql-programming-guide.html).
 
-[![Build Status](https://travis-ci.org/databricks/spark-avro.svg?branch=master)](https://travis-ci.org/databricks/spark-avro)
-[![codecov.io](http://codecov.io/github/databricks/spark-avro/coverage.svg?branch=master)](http://codecov.io/github/databricks/spark-avro?branch=master)
+[![Build Status](https://travis-ci.org/KainosSoftwareLtd/spark-avro.svg?branch=kainos-2.0.1)](https://travis-ci.org/KainosSoftwareLtd/spark-avro)
+[![codecov.io](http://codecov.io/github/KainosSoftwareLtd/spark-avro/coverage.svg?branch=kainos-2.0.1)](http://codecov.io/github/KainosSoftwareLtd/spark-avro?branch=kainos-2.0.1)
 
 ## Requirements
 
@@ -29,20 +29,44 @@ For added Logical Type support the following versions should be used:
 
 You can link against this library (for Spark 1.4+) in your program at the following coordinates:
 
-Using SBT:
+#### SBT
 
 ```
 libraryDependenicies += "com.databricks" %% "spark-avro" % "2.0.1"
 ```
+For logical type support:
 
-Using Maven:
+```
+resolvers += "jitpack" at "https://jitpack.io"
+libraryDependenicies += "com.github.KainosSoftwareLtd" %% "spark-avro" % "2.0.1-kainos"
+```
+
+#### Maven
 
 ```xml
 <dependency>
-    <groupId>com.databricks<groupId>
+    <groupId>com.databricks</groupId>
     <artifactId>spark-avro_2.10</artifactId>
     <version>2.0.1</version>
 </dependency>
+```
+For logical type support:
+
+```xml
+<repositories>
+	<repository>
+		<id>jitpack.io</id>
+		<url>https://jitpack.io</url>
+	</repository>
+</repositories>
+
+<dependencies>
+	<dependency>
+	    <groupId>com.github.KainosSoftwareLtd</groupId>
+	    <artifactId>spark-avro_2.10</artifactId>
+	    <version>2.0.1-kainos</version>
+	</dependency>
+</dependencies>
 ```
 
 The `spark-avro` library can also be added to Spark jobs launched through `spark-shell` or `spark-submit` by using the `--packages` command line option.
@@ -50,6 +74,11 @@ For example, to include it when starting the spark shell:
 
 ```
 $ bin/spark-shell --packages com.databricks:spark-avro_2.10:2.0.0
+```
+For logical type support:
+
+```
+$ bin/spark-shell --repositories https://jitpack.io --packages com.github.KainosSoftwareLtd:spark-avro_2.10:2.0.1-kainos
 ```
 
 Unlike using `--jars`, using `--packages` ensures that this library and its dependencies will be added to the classpath.
@@ -60,42 +89,9 @@ This library is cross-published for Scala 2.11, so 2.11 users should replace 2.1
 ### Logical Type support
 Versions with Logical Type support are not currently available through Maven Central or Sonatype. 
 
-**Version `2.0.1-kainos` currently requires the use of `import com.kainos.spark.avro._` instead of `import com.databricks.spark.avro_` to access the spark-avro read and write implicits.** 
+**Version `2.0.1-kainos` currently requires the use of `import com.kainos.spark.avro._` instead of `import com.databricks.spark.avro._` to access the spark-avro read and write implicits.** 
 
 Any further reference to `com.databricks.spark.avro` should be replaced with `com.kainos.spark.avro` when using version `2.0.1-kainos`.
-
-
-The following coordinates should be added to get versions supporting Logical Types:
-
-```
-resolvers += "jitpack" at "https://jitpack.io"
-libraryDependenicies += "com.github.KainosSoftwareLtd" %% "spark-avro" % "2.0.1-kainos"
-```
-
-Using Maven:
-
-```xml
-<repositories>
-  <repository>
-    <id>jitpack.io</id>
-    <url>https://jitpack.io</url>
-  </repository>
-</repositories>
-```
-Then
-
-```xml
-<dependency>
-    <groupId>com.github.KainosSoftwareLtd<groupId>
-    <artifactId>spark-avro_2.10</artifactId>
-    <version>2.0.1-kainos</version>
-</dependency>
-```
-
-Using `spark-shell` or `spark-submit`:
-```
-$ bin/spark-shell --repositories https://jitpack.io --packages com.github.KainosSoftwareLtd:spark-avro_2.10:2.0.1-kainos
-```
 
 ## Features
 

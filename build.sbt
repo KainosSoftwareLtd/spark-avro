@@ -91,21 +91,8 @@ pomExtra :=
     </developer>
   </developers>
 
-bintrayReleaseOnPublish in ThisBuild := false
+publishTo <<= version { v: String =>
+  val nexus = "https://uknpdnex01/"
+    Some("releases" at nexus + "repository/spark-avro/")
+}
 
-import ReleaseTransformations._
-
-// Add publishing to spark packages as another step.
-releaseProcess := Seq[ReleaseStep](
-  checkSnapshotDependencies,
-  inquireVersions,
-  runTest,
-  setReleaseVersion,
-  commitReleaseVersion,
-  tagRelease,
-  publishArtifacts,
-  setNextVersion,
-  commitNextVersion,
-  pushChanges,
-  releaseStepTask(spPublish)
-)

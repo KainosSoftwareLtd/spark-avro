@@ -65,8 +65,6 @@ releaseCrossBuild := true
 
 licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))
 
-releasePublishArtifactsAction := PgpKeys.publishSigned.value
-
 pomExtra :=
   <url>https://github.com/databricks/spark-avro</url>
   <scm>

@@ -92,7 +92,7 @@ pomExtra :=
   </developers>
 
 publishTo <<= version { v: String =>
-  val nexus = "http://uknpdnex01/"
+  val nexus = "https://uknpdnex01/"
     Some("releases" at nexus + "repository/spark-avro/")
 }
 

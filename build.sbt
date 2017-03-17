@@ -91,6 +91,8 @@ pomExtra :=
     </developer>
   </developers>
 
+credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
+
 publishTo <<= version { v: String =>
   val nexus = "https://uknpdnex01/"
     Some("releases" at nexus + "repository/spark-avro/")
